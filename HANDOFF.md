@@ -59,31 +59,58 @@ was never published.
 Runs today with `npm install && npm run dev`, no env vars needed.
 
 ```
+DEMO.md                       the cross phase demo contract. Steps, routes, the
+                              wow moment. Phase 8's shot list comes from it
+CLAUDE.md                     permanent agent notes: commands, pitfalls, the
+                              Vercel guardrails, event to demo step table
 app/
-  layout.tsx                  metadata, real product name and description
-  page.tsx                    landing plus the console section (server component,
-                              force-dynamic, calls the three fetchers)
+  layout.tsx                  metadata (title template), SiteHeader, <main>,
+                              SiteFooter. The shared shell for both routes
+  page.tsx                    landing only: hero, how it works, differentiation,
+                              risk. Static, no data fetching
+  console/page.tsx            THE DEMO ROUTE. Server component, force-dynamic,
+                              reads through getAdapter() and renders the console
+  console/loading.tsx         skeleton matching the console grid
+  api/windows/route.ts        GET, ApiResponse<EventWindow[]> via getAdapter()
+  api/vaults/route.ts         GET, ApiResponse<Vault[]> via getAdapter()
+  api/health/route.ts         GET, adapter mode, chain id, decimals, whether a
+                              vault address is set. Phase 2's readiness probe
   globals.css                 ALL colors live here as CSS variables. Palette:
                               #0B0F14 ground, #2DD4BF teal accent, #F5A524 amber
                               (stop rules and losses only), #94A3B8 slate
   icon.svg                    favicon glyph
   opengraph-image.png         pre-generated, Next serves it automatically.
                               Do NOT add an opengraph-image.tsx alongside it
-  error.tsx, not-found.tsx    styled error and empty states
+  error.tsx, not-found.tsx,
+  global-error.tsx            styled error and empty states
 components/
-  site-header.tsx             logo, chain badge, console link
+  site-header.tsx             client component. Logo, chain badge, nav over the
+                              two routes with aria-current
+  site-footer.tsx             wordmark and the four reference links
   standing-plan-console.tsx   THE CORE SCREEN, client component. Plan builder,
                               live vault card with countdown ring, pre-write
                               health strip, roll ledger timeline
   ui/                         shadcn primitives (button, card, badge, input).
                               Extend here, never style inline
 lib/
-  data.ts                     types plus seed: 12 event windows and 3 vaults
+  types.ts                    every domain type plus ApiResponse<T>. No values
+  data/seed.ts                typed re-export of the fixtures, plus planDefaults
+  adapters/types.ts           the PerennisAdapter interface
+  adapters/fake.ts            fixtures, source "seed", no viem import
+  adapters/chain.ts           wraps lib/dreamdex.ts reads unchanged
+  adapters/index.ts           getAdapter(), reads ADAPTER_MODE, defaults to fake
   vault.ts                    PURE roll engine, a mirror of the contract's
                               settlement path, plus preflight() checks
   dreamdex.ts                 chain integration, viem, Shannon chain definition
+fixtures/
+  event-windows.json          12 windows, unique market ids
+  vaults.json                 3 vaults, Vault 03 halted on consecutive-losses
+  seed-manifest.json          written by npm run seed, byte identical per run
+scripts/
+  seed.mjs                    fixture invariant checks and the manifest writer
 contracts/
   src/PerennisVault.sol       the vault and the reactivity handler
+  test/PerennisVault.t.sol    require based tests, no forge-std, mocks inline
   script/Deploy.s.sol         forge deploy script, returns the address
   README.md                   build, deploy and first run commands
 public/
@@ -107,11 +134,18 @@ public/
 
 **What is mocked, by exact function name:**
 
+- The whole app runs on the fake adapter by default. `getAdapter()` in
+  `lib/adapters/index.ts` returns `fakeAdapter` unless `ADAPTER_MODE=real`, so
+  `/console` and all three API routes serve `fixtures/*.json`. Nothing has been
+  read off a chain in this repo yet, not once.
+- `ADAPTER_MODE=real` with an empty `NEXT_PUBLIC_CONTRACT_ADDRESS` falls back to
+  the fixtures and puts the reason in `note`, which the console renders as a
+  warning strip. That is by design, not a bug to fix.
 - `fetchEventWindows()` in `lib/dreamdex.ts`. The chain path reads
   `getMarket(bytes32)` per known market id. The market id list is hardcoded and
   the ABI is written from the docs, not verified on chain. Replace with
   `@somnia-chain/markets-sdk` `loadMarkets()` + `isBinaryMarket()`.
-- `fetchVaults()` ledger field. Vault numbers come from the chain but
+- `fetchVaults()` ledger field. Vault numbers would come from the chain but
   `ledger:` is still seeded. Replace with `getLogs` on the `RollSettled` event.
 - `resolveWindow()` in `lib/vault.ts`. Deterministic draw seeded from the market
   id, weighted by the implied probability on the book, so demo runs repeat
@@ -289,3 +323,107 @@ state where it does not compile, even mid task.
   boundary, because you only get one take.
 - BUIDL submitted on DoraHacks with the repo link and the video, at least 12
   hours before 8 September 18:00 UTC.
+
+---
+
+## 6. Phase 1 record, the walking skeleton
+
+### Goal
+
+Create the five seams every later phase depends on (the demo contract, the
+`ADAPTER_MODE` adapter, the API handlers, the tokens file, a deployable shell)
+and make the 90 second demo path clickable end to end on fixtures from a
+dedicated `/console` route. No features, no chain work.
+
+### Status
+
+Done, with one deliberate deviation recorded below. The demo step that had to
+work now lives on `/console`: the countdown reaches zero, `settleAndRoll()` in
+`lib/vault.ts` turns the card over, a row lands in the roll ledger, and no
+signature is asked for.
+
+Nothing here has been executed. `npm install`, `npm run build`, `npm run seed`
+and `forge build` are the runner's job, so treat every command dependent item as
+unverified rather than passing.
+
+### Decisions
+
+- **Two routes, no more.** `/` is the landing page, `/console` is the demo. The
+  old `#console` anchor is gone and no anchor to it survives outside `DEMO.md`.
+- **Fake is the default adapter.** Only `ADAPTER_MODE === "real"` picks the chain
+  path. A misspelled value gives a working console rather than a blank page.
+- **`lib/data.ts` is deleted.** Types moved to `lib/types.ts`, values moved to
+  `fixtures/*.json` and are re-exported through `lib/data/seed.ts` with a cast.
+  `scripts/seed.mjs` is what actually guards those files, so the cast is the
+  assertion and the seed script is the check.
+- **`Sourced<T>` is gone,** replaced by `ApiResponse<T>` in `lib/types.ts`. One
+  response shape for adapters, API handlers and pages.
+- **The countdown now says it is a demo clock on screen.** `HANDOFF.md` and
+  `DEMO.md` both claim it is labelled, and it was not, so a caption was added
+  under the ring: "Demo clock: 20 seconds stands in for a real 15 minute window."
+- **No new npm dependency.** None was needed, so the safe default held.
+- **`app/global-error.tsx` now imports `globals.css`** and names CSS variables
+  instead of carrying four hex literals, so `app/globals.css` really is the only
+  place a color is defined.
+
+### Failed attempts and deviations
+
+- **`contracts/test/PerennisVault.t.sol` has exactly one import line**, and the
+  acceptance list asked for none. `import {PerennisVault} from
+  "../src/PerennisVault.sol";` is unavoidable: Solidity resolves symbols per
+  file, so a test file with zero imports cannot name, deploy or call the contract
+  it is testing. The reason behind the rule is honoured in full, which is that
+  `forge-std` is not vendored (`contracts/lib` does not exist) and importing it
+  would break `forge build`. There is no forge-std import, no cheatcode, and the
+  mock ERC20 and mock markets module are declared in the same file. Assertions
+  are plain `require`. If the runner wants literally zero imports, the only
+  option is to delete the test file.
+
+### Files changed
+
+Added: `DEMO.md`, `CLAUDE.md`, `.farm-commits.json`, `lib/types.ts`,
+`lib/data/seed.ts`, `lib/adapters/{types,fake,chain,index}.ts`,
+`fixtures/{event-windows,vaults}.json`, `scripts/seed.mjs`,
+`app/console/{page,loading}.tsx`, `app/api/{windows,vaults,health}/route.ts`,
+`components/site-footer.tsx`, `contracts/test/PerennisVault.t.sol`.
+
+Changed: `app/layout.tsx`, `app/page.tsx`, `app/error.tsx`, `app/not-found.tsx`,
+`app/global-error.tsx`, `components/site-header.tsx`,
+`components/standing-plan-console.tsx`, `lib/dreamdex.ts`, `lib/vault.ts`,
+`package.json`, `.env.example`, `README.md`, `HANDOFF.md`.
+
+Deleted: `lib/data.ts`.
+
+### Commands the runner should run
+
+```bash
+npm install
+npm run build          # must pass with zero TypeScript errors
+npm run seed           # twice: fixtures/seed-manifest.json must be identical
+cd contracts && forge build
+```
+
+Then the first Vercel deploy, and write the production URL back into the demo
+link line in `README.md` and into this file.
+
+### Open questions for the human
+
+1. `contracts/test/PerennisVault.t.sol` keeps one relative import. Accept it, or
+   drop the test file? Accepting is the recommendation.
+2. Nothing else needed asking. No new dependency, no third page route, no change
+   to the stop rule semantics in `lib/vault.ts` or `PerennisVault.sol`.
+
+### Next best step for Phase 2
+
+Open the reactivity subscription and verify the three unknown interfaces
+(section 3A and 3B above). The frontend side is already staged for it: flip
+`ADAPTER_MODE` to `real`, fill `NEXT_PUBLIC_CONTRACT_ADDRESS`, and
+`lib/adapters/chain.ts` starts serving `/console` and all three API routes with
+no page file touched. `GET /api/health` is the one place to check whether that
+flip actually took.
+
+Before any of that, the deployer wallet (`FARM_EVM_PRIVATE_KEY`) needs STT for
+gas on `https://dream-rpc.somnia.network` (chain 50312), plus whatever the
+reactivity subscription's 32 SOMI equivalent turns out to be on Shannon, and
+tUSDC through `faucet(uint256)` on
+`0x70a86D8842FB63C4Ad2b7cdddF530eBf1BB25d8E`.

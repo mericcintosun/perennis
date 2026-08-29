@@ -54,12 +54,15 @@ product rather than degrading it.
 | DreamDEX BinaryMarketsModule | `contracts/src/PerennisVault.sol`, `lib/dreamdex.ts` | `redeem` converts the winning ERC-6909 outcome token back to collateral, `buy` enters the next window, `marketState` gates the write on lifecycle state 1 (Trading). |
 | Chain reads for the console | `lib/dreamdex.ts` | `fetchVaults` reads `snapshot()` and `plan()` off the deployed vault with viem, `fetchEventWindows` reads live market lifecycle state, `fetchCollateralDecimals` reads decimals off the token instead of assuming 6. |
 
-`lib/dreamdex.ts` has one function per read, each with both paths in the same
-body: the real chain call when the matching env var is set, and the seed data in
-`lib/data.ts` when it is not. That means the console is fully usable with an
-empty `.env.local`, and pointing `NEXT_PUBLIC_CONTRACT_ADDRESS` at a deployed
-vault switches the same screens onto Shannon without touching a component. The
-badge in the console header always says which of the two you are looking at.
+Every screen and every API route reads through one interface, `PerennisAdapter`
+in `lib/adapters/`. `ADAPTER_MODE=fake` serves the fixtures in `fixtures/`,
+`ADAPTER_MODE=real` serves `lib/dreamdex.ts`, which has one function per read
+with both paths in the same body: the real chain call when the matching env var
+is set, and the fixtures when it is not. That means the console is fully usable
+with an empty `.env.local`, and pointing `NEXT_PUBLIC_CONTRACT_ADDRESS` at a
+deployed vault switches the same screens onto Shannon without touching a
+component. The badge in the console header always says which of the two you are
+looking at.
 
 `lib/vault.ts` is a line for line mirror of the contract's settlement path, so
 the UI can show you what the vault will do before anything is signed. If you
@@ -82,10 +85,11 @@ cp .env.example .env.local   # optional, everything works without it
 npm run dev
 ```
 
-Open http://localhost:3000. The console has three vaults: an empty one to write a
+Open http://localhost:3000/console. It has three vaults: an empty one to write a
 plan into, one running an eight window BTC plan, and one that halted itself after
 two losses in a row. Let the countdown reach zero and watch the card roll with no
-signature prompt.
+signature prompt. The countdown is a 20 second demo clock, labelled as one on
+screen, standing in for a real 15 minute window.
 
 To run against the chain, deploy the vault first and fill in
 `NEXT_PUBLIC_CONTRACT_ADDRESS` and `NEXT_PUBLIC_BINARY_MARKETS_MODULE`. Build and
@@ -94,7 +98,7 @@ deploy commands are in [contracts/README.md](contracts/README.md), including the
 
 ```bash
 npm run build   # must stay green
-npm run seed    # placeholder, there is no database yet
+npm run seed    # checks fixtures/*.json and rewrites fixtures/seed-manifest.json
 ```
 
 ## What we would build next
