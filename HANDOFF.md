@@ -63,6 +63,8 @@ DEMO.md                       the cross phase demo contract. Steps, routes, the
                               wow moment. Phase 8's shot list comes from it
 CLAUDE.md                     permanent agent notes: commands, pitfalls, the
                               Vercel guardrails, event to demo step table
+DELIVERY.md                   the two hackathon rows, what to submit, and the
+                              human's pre-submission list
 app/
   layout.tsx                  metadata (title template), SiteHeader, <main>,
                               SiteFooter. The shared shell for both routes
@@ -110,7 +112,14 @@ lib/
   adapters/index.ts           getAdapter(), reads ADAPTER_MODE, defaults to fake
   vault.ts                    PURE roll engine, a mirror of the contract's
                               settlement path, plus preflight() checks
-  dreamdex.ts                 chain integration, viem, Shannon chain definition
+  dreamdex.ts                 chain integration: vault snapshot, roll ledger,
+                              collateral decimals. Server only
+  markets.ts                  market discovery, three levels: the markets SDK,
+                              the per id getMarket read, the fixtures
+  rpc.ts                      the Shannon client and the one retry loop, shared
+                              by dreamdex.ts and markets.ts
+types/
+  somnia-markets-sdk.d.ts     the narrow SDK surface this app calls
 fixtures/
   event-windows.json          12 windows, unique market ids
   vaults.json                 3 vaults, Vault 03 halted on consecutive-losses
@@ -155,10 +164,12 @@ public/
 - `ADAPTER_MODE=real` with an empty `NEXT_PUBLIC_CONTRACT_ADDRESS` falls back to
   the fixtures and puts the reason in `note`, which the console renders as a
   warning strip. That is by design, not a bug to fix.
-- `fetchEventWindows()` in `lib/dreamdex.ts`. The chain path reads
-  `getMarket(bytes32)` per known market id. The market id list is hardcoded and
-  the ABI is written from the docs, not verified on chain. Replace with
-  `@somnia-chain/markets-sdk` `loadMarkets()` + `isBinaryMarket()`.
+- ~~`fetchEventWindows()` in `lib/dreamdex.ts`.~~ Done in Phase 4.
+  `discoverEventWindows()` in `lib/markets.ts` calls
+  `@somnia-chain/markets-sdk` `loadMarkets()` filtered by `isBinaryMarket()`,
+  with the per id `getMarket(bytes32)` read as the fallback and the fixtures
+  behind that. The SDK call site has never been executed from inside this repo,
+  so treat it as unverified. See section 9.
 - ~~`fetchVaults()` ledger field.~~ Done in Phase 2. `fetchRollLedger()` in
   `lib/dreamdex.ts` builds the ledger from `getLogs` on `RollSettled`, and the
   fixture ledger is only the fallback. See section 7.
@@ -170,12 +181,16 @@ public/
 - The countdown uses `DEMO_WINDOW_SECONDS = 20` in
   `components/standing-plan-console.tsx`, a real window is 15 minutes. It is
   labelled as a demo clock on screen. Do not quietly present it as real time.
-- `@somnia-chain/markets-sdk` is deliberately not in package.json yet. Add it
-  when you wire live market discovery and order submission, and pin the version
-  you actually install.
-- The window queue written by `startPlan` still comes from
-  `fixtures/event-windows.json` ids padded to bytes32 by `toBytes32()` in
-  `lib/tx.ts`. Real market ids arrive with the markets SDK in Phase 4.
+- `@somnia-chain/markets-sdk` is in `package.json` under `optionalDependencies`
+  at `^0.28.0` as of Phase 4, loaded through a guarded dynamic import so a
+  package that cannot be fetched degrades one read rather than breaking the
+  install. Confirm the exact published name before the recording.
+- The window queue written by `startPlan` comes from whatever
+  `discoverEventWindows()` produced for that render. On the SDK path those are
+  real market ids and `toBytes32()` in `lib/tx.ts` passes them through unchanged.
+  On either fallback they are fixture ids padded to bytes32, which the module
+  cannot resolve, so `_enterNext` emits `EntrySkipped`. `GET /api/health` says
+  which of the two you are on.
 
 ---
 
@@ -807,3 +822,266 @@ turns `EntrySkipped` into `PositionOpened` and closes the last gap between the
 demo and the chain. `toBytes32()` in both `lib/tx.ts` and `lib/dreamdex.ts` stops
 doing anything the moment ids arrive full length, and both can be deleted in the
 same edit. After that, the health strip against live values (section 3F).
+
+---
+
+## 9. Phase 4 record, live discovery and the judged surface
+
+### Goal
+
+Close the gap section 8 named. `fetchEventWindows()` was a hardcoded market id
+list, so a real `startPlan` queued ids the DreamDEX BinaryMarketsModule cannot
+resolve and `_enterNext` emitted `EntrySkipped` instead of `PositionOpened`.
+Phase 4 routes discovery through `@somnia-chain/markets-sdk` `loadMarkets()`
+filtered by `isBinaryMarket()`, adds the queue strip as a new `DEMO.md` step 7,
+and finishes the surface a judge actually touches: the responsive pass,
+`DELIVERY.md`, the README track table, the Twitter card and a landing section
+describing what shipped.
+
+### Status
+
+Written, not executed. Nothing in this phase was run: no `npm install`, no
+`npm run build`, no `npm run seed`, no `forge test`, no RPC call, no SDK call, no
+transaction, no dev server, no browser at any width. Every command dependent
+claim below is unverified and is the runner's to check. In particular, whether
+`@somnia-chain/markets-sdk` exists under that exact name at 0.28.0 or above has
+not been checked against a registry from inside this session.
+
+**The mechanism that went real, on paper:** `discoverEventWindows()` in
+`lib/markets.ts`, three levels deep. Level one loads the SDK through a guarded
+dynamic import and maps every binary market onto the `EventWindow` shape. Level
+two is the Phase 2 per id `getMarket(bytes32)` overlay, moved into the same file
+whole. Level three is `fixtures/event-windows.json`. Each level that does not
+answer attaches a `note` written by us through `coreFailure()`, and
+`GET /api/health` reports `marketDiscovery.via` so a deployment can say which
+level answered without anyone reading a log.
+
+**Deleting `lib/markets.ts` breaks `DEMO.md` step 2 and `DEMO.md` step 7.** Step
+2 is the open window on the vault card (entry price, implied probability, book
+depth), which comes from the window list this module produces. Step 7 is the
+queue strip, whose per id lifecycle state is a lookup into that same list. The
+dependency table in `DEMO.md` names the file on row 7, and the depth test is
+stated under the README track table.
+
+**Still mocked, by exact function name:**
+
+- `resolveWindow()` in `lib/vault.ts`, the deterministic draw seeded from the
+  market id. On chain this comes from the settlement event payload.
+- `settleAndRoll()` in `lib/vault.ts`, the mirror that drives the console clock.
+  Fixture path only: with `source === "chain"` the countdown calls
+  `router.refresh()` instead.
+- `syntheticTxHash()` in `lib/vault.ts`, reached only from `settleAndRoll()`.
+- `DEMO_WINDOW_SECONDS = 20` in `components/standing-plan-console.tsx`, the demo
+  clock, still labelled as one on screen.
+- `toBytes32()`, which moved from `lib/dreamdex.ts` into `lib/markets.ts` and is
+  re-exported from `lib/dreamdex.ts`. It still does real work on the fallback
+  path, because fixture ids are the shortened form and need padding. Ids arriving
+  full length from the SDK pass through it unchanged, so on the SDK path it is a
+  no-op. The copy in `lib/tx.ts` is unchanged and is still what pads the ids the
+  console writes into `startPlan`.
+- The SDK response shape itself. `types/somnia-markets-sdk.d.ts` is written from
+  the docs, not from a verified response, so every field is read through a
+  candidate key list and a market that cannot be mapped is dropped rather than
+  guessed at.
+
+### Decisions
+
+- **The markets SDK is an `optionalDependencies` entry, not a `dependencies`
+  one.** A package that cannot be fetched (a renamed package, a private
+  registry, a network failure) has to degrade one read rather than kill
+  `npm install` and leave the runner with no repair path. The reason is written
+  at the top of `lib/markets.ts` rather than in `package.json`, along with why
+  the floor is 0.28.0: below it the decimal conversion produces
+  `0.050000000000000003` and orders come back `InvalidPrice`.
+- **The SDK import is dynamic, behind a variable specifier, with
+  `/* webpackIgnore: true */`, inside try/catch.** That makes a missing package a
+  caught runtime condition instead of a bundler resolution failure, which is the
+  only way an optional dependency can be honest. Both the namespace and its
+  `default` are checked, because a CommonJS package lands under `default` when it
+  is imported from an ES module.
+- **`lib/rpc.ts` is new, and it is the reason there is still exactly one retry
+  loop.** `lib/dreamdex.ts` imports `lib/markets.ts`, so leaving the Shannon
+  client and `withTimeoutAndRetry()` in `lib/dreamdex.ts` would have forced
+  either a circular import between the two or a second retry loop in the new
+  file. Both moved down into `lib/rpc.ts` and both modules import them from
+  there. `lib/dreamdex.ts` re-exports `somniaShannon`, `withTimeoutAndRetry` and
+  `toBytes32`, so every importer written before this phase resolves them from the
+  same place it always did. This is a deviation from the Phase 2 decision that
+  says the retry loop lives in `lib/dreamdex.ts`: the rule it was protecting (one
+  loop, one bounded worst case latency) is intact, the file changed.
+- **Step 7 was inserted at the end and the landing page step moved to 8.** Steps
+  1 to 6 keep their numbers because sections 7 and 8 of this file refer to them
+  by number and renumbering would make that history wrong.
+- **Two nav links stay visible at 360px.** A hamburger for a two item nav costs
+  one tap to reach half a menu, which is worse on a phone than the menu. Each
+  link carries `inline-flex min-h-11 items-center ... sm:min-h-0` instead, and
+  the header row wraps rather than pushing the page sideways. Recorded here as a
+  deliberate adaptation of the mobile nav rule.
+- **The queue strip has two honest labels, not one invented state.** An id with
+  no matching window reads "Not resolved by the markets module yet". An empty id
+  reads "Queued on chain, snapshot() reports the count and not the id", which is
+  the literal truth: `_queue` is `private` on `PerennisVault` with no per index
+  getter, so the chain path knows the pending count and not the ids in it.
+- **`QueueStrip` takes a third prop the spec did not name, `source`.** The same
+  section asks for a seed caveat branch, and seed-ness is not derivable from a
+  `Vault` or an `EventWindow[]`. It is the value the parent already holds.
+- **No new page route, no new API route, no new fetch.** The strip reuses the
+  `windows` and `Vault` props that already flow into the console.
+
+### Failed attempts and deviations
+
+- **The SDK call site is written but unverified.** Nothing in this session could
+  run `npm install` or reach a registry, so `loadMarkets()` and
+  `isBinaryMarket()` have never been called. Per the cut protocol, the file, the
+  call site and the guard stay, the fallback serves, and this is recorded as
+  unverified rather than deleted. If the package name is wrong, the install still
+  passes, `marketDiscovery.via` reads `market-ids` or `seed`, and the fix is the
+  package name in `package.json` plus a reinstall. No code change is needed for
+  that.
+- **Two `grid-cols-2` grids survive without a breakpoint prefix**, at
+  `components/standing-plan-console.tsx:428` (Up and Down) and `:443` (BTC and
+  ETH). Both are two short buttons in a card that is 264px wide at 360px, so each
+  button gets about 126px and the two up layout is correct at every width.
+  Stacking them would be worse, so the acceptance line about bare `grid-cols-2`
+  is knowingly not met on those two, and met everywhere else. The stat rows at
+  `:619` and `:650` read `grid-cols-2 ... sm:grid-cols-3`, so they carry a
+  breakpoint on the same grid.
+- **The responsive pass was read, not seen.** Every width claim in this record is
+  a reading of class names and a calculation from the container widths. No
+  browser was opened at 360px, 768px or 1280px. That is the runner's check and it
+  is the one most likely to find something this session could not.
+- **`getMarketDiscovery()` on the chain adapter runs discovery a second time.**
+  `GET /api/health` therefore does the SDK load twice per request when the
+  console is also being rendered. A module level cache with a TTL was considered
+  and dropped: a stale window list on camera is worse than one extra read on a
+  probe route, and a cache would need an invalidation story this phase has no
+  budget for.
+- **Nothing was run.** No error survived two correction attempts because no error
+  could be observed: this session had no shell.
+
+### Files changed
+
+Added: `lib/markets.ts`, `lib/rpc.ts`, `types/somnia-markets-sdk.d.ts`,
+`DELIVERY.md`.
+
+Changed: `lib/dreamdex.ts`, `lib/config.ts`, `lib/types.ts`,
+`lib/adapters/types.ts`, `lib/adapters/fake.ts`, `lib/adapters/chain.ts`,
+`app/api/health/route.ts`, `app/layout.tsx`, `app/page.tsx`,
+`app/console/loading.tsx`, `components/standing-plan-console.tsx`,
+`components/site-header.tsx`, `components/ui/button.tsx`, `package.json`,
+`.env.example`, `DEMO.md`, `CLAUDE.md`, `README.md`, `HANDOFF.md`,
+`.farm-commits.json`.
+
+Deleted: nothing. Nothing under `contracts/`, `public/`, `app/icon.svg` or
+`app/opengraph-image.png` was touched, there is no `app/opengraph-image.tsx`, and
+there are still two page routes.
+
+### Commands the runner should run
+
+```bash
+npm install            # picks up the optional @somnia-chain/markets-sdk
+npm run build          # must pass with zero TypeScript errors
+npm run seed           # twice, fixtures/seed-manifest.json must be identical
+npm run test:contracts # unchanged this phase, nothing under contracts/ moved
+```
+
+If `npm install` warns that the optional dependency could not be resolved, that
+is the designed path and not a failure: the install passes, the app builds, and
+`marketDiscovery.via` reports `market-ids` or `seed`. Correct the package name
+from the sponsor's own docs and reinstall to put it on `sdk`.
+
+Then redeploy to the same Vercel project as the Phase 1 deploy so the canary URL
+does not move, and check, in this order:
+
+1. `GET /api/health` on the live URL. `marketDiscovery.via` and
+   `marketDiscovery.sdkResolved` say whether the SDK actually loaded.
+2. All eight `DEMO.md` steps in a private window, no console errors.
+3. Devtools at 360px, 768px and 1280px: no horizontal page scroll, both nav
+   links tappable, the ledger readable, every button at least 44px tall below the
+   sm breakpoint.
+4. View source on the home page: the og:image is an absolute URL that loads, and
+   the twitter card meta tag reads `summary_large_image`.
+5. `/console` with `ADAPTER_MODE` unset, to confirm the fixture path renders
+   exactly what it rendered before this phase.
+
+Before any chain walk, fund the owner wallet (`FARM_EVM_PRIVATE_KEY`): STT for
+gas plus `NEXT_PUBLIC_SUBSCRIPTION_FUNDING_STT` on chain 50312 via
+https://cloud.google.com/application/web3/faucet/somnia/shannon or Somnia Discord
+`#dev-chat`, and tUSDC through `faucet(10000)` on
+`0x70a86D8842FB63C4Ad2b7cdddF530eBf1BB25d8E`.
+
+### Acceptance gate, honestly
+
+Met, by reading the files:
+
+- `lib/markets.ts` exists, exports `discoverEventWindows`, and calls both
+  `loadMarkets` and `isBinaryMarket` (`lib/markets.ts:220` and `:232`). The
+  package is in `package.json` under `optionalDependencies` and is imported in
+  `lib/markets.ts` (a type import at the top, plus the dynamic import at
+  `lib/markets.ts:186`). It is not a decorative dependency: both functions are
+  called and the result is what the console renders.
+- `fetchEventWindows()` in `lib/dreamdex.ts` is a thin wrapper over
+  `discoverEventWindows().response`, and all three levels attach a note written
+  by us.
+- `getMarketDiscovery()` is in `lib/adapters/types.ts` and in both
+  implementations, and `app/api/health/route.ts` reports `marketDiscovery`.
+- `lib/adapters/fake.ts` imports no viem and no chain module, so an empty
+  `.env.local` still returns `fakeAdapter` from `getAdapter()` and `/console`
+  renders exactly what it rendered before.
+- `DEMO.md` runs 1 to 8 with no gaps and no repeats, step 7 names `/console` and
+  its on screen result, and the table has rows 7 and 8.
+- `QueueStrip` is exported from `components/standing-plan-console.tsx`, rendered
+  inside the vault card under the pre-write checks, reachable without typing a
+  URL, and has empty, seed and normal branches.
+- `components/ui/button.tsx` gives every size `h-11` below `sm`, and both header
+  links carry `min-h-11`.
+- `DELIVERY.md` exists with both matrix names byte identical, both
+  `entryMode: automatic`, and both `watch:` steps (4 and 7) exist in `DEMO.md`.
+- The README table has the six columns in order, and both Prize cells are byte
+  identical to the two matrix names.
+- `app/layout.tsx` exports title, description and `twitter.card`.
+  `app/opengraph-image.png` is untouched and no `opengraph-image.tsx` exists.
+- Every `process.env` read still lives in `lib/config.ts` or
+  `lib/adapters/index.ts`, and `NEXT_PUBLIC_MARKET_DISCOVERY` has a documented
+  line in `.env.example`. No real key is in any tracked file.
+- No `useSearchParams` anywhere, no runtime filesystem write outside `scripts/`,
+  and no third client reachable module imports viem (`lib/rpc.ts` and
+  `lib/markets.ts` are server only, reached through `lib/dreamdex.ts` and
+  `lib/adapters/chain.ts`, and no file under `app/` or `components/` imports
+  either).
+
+Not met, or not checkable from here:
+
+- **"the SDK path works" is unverified.** The call site exists and is guarded.
+  Whether it returns anything is a runner check, `marketDiscovery.sdkResolved` is
+  the field that answers it.
+- **The bare `grid-cols-2` line**, on the two button pairs described above.
+- **Every width claim.** Read, not seen.
+
+### Open questions for the human
+
+1. **Is `@somnia-chain/markets-sdk@^0.28.0` the right coordinate?** It was taken
+   from the brief, not from a registry. If the real package name differs, change
+   it in `package.json` and nothing in `lib/markets.ts` needs editing.
+2. **The SDK field names in `types/somnia-markets-sdk.d.ts` are guesses from the
+   docs.** The mapper reads a candidate list per field, so a different key name
+   costs one line in that list. If you have a real `loadMarkets()` response,
+   paste one market into the issue and the guesswork can go.
+3. **A market that is neither BTC nor ETH is dropped.** The plan builder offers
+   two assets and the `Asset` union has two members. If Event Contracts lists a
+   third underlying, this is where it goes missing.
+4. **The queue ids are not readable on the chain path.** `_queue` is private with
+   no getter, so the strip shows a count with an honest label instead of ids.
+   Exposing `queueAt(uint256)` on the contract would fix it, and the contract
+   fence is closed, so it is a decision rather than an edit.
+
+### Next best step for Phase 5
+
+The health strip against live values, section 3F. `preflight()` in
+`lib/vault.ts` already renders and `lib/markets.ts` now supplies a real market
+lifecycle state, so the remaining fake input to that strip is the subscription
+gas balance and the priority fee, which come off the reactivity precompile. After
+that, the two submission artefacts that are not code: the 2 to 3 minute video
+against a real 15 minute window boundary, and the SDK documentation feedback
+report, which should be written straight out of the open questions above while
+the friction is still fresh.
