@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,8 +13,24 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { WalletPanel } from "@/components/wallet-panel";
 import { cn } from "@/lib/utils";
+import { CHAIN_ID } from "@/lib/config";
 import { planDefaults } from "@/lib/data/seed";
+import { parsePlanForm } from "@/lib/schemas";
+import {
+  armNextCall,
+  connectWallet,
+  depositCalls,
+  ensureChain,
+  haltCall,
+  isWriteConfigured,
+  sendVaultTx,
+  startPlanCall,
+  withdrawCall,
+  type VaultCall,
+} from "@/lib/tx";
+import { isBusy, type WalletState } from "@/lib/wallet-state";
 import type {
   DataSourceLabel,
   Direction,
@@ -57,10 +74,30 @@ export function StandingPlanConsole({
   decimals,
   explorerBase,
 }: Props) {
+  const router = useRouter();
   const [vaultList, setVaultList] = useState<Vault[]>(initialVaults);
   const [activeId, setActiveId] = useState(initialVaults[0].id);
   const [secondsLeft, setSecondsLeft] = useState(DEMO_WINDOW_SECONDS);
   const [form, setForm] = useState({ ...planDefaults });
+  const [walletState, setWalletState] = useState<WalletState>({
+    kind: "disconnected",
+  });
+
+  /** True when NEXT_PUBLIC_CONTRACT_ADDRESS is filled in. */
+  const writeConfigured = isWriteConfigured();
+
+  /**
+   * A transaction can only go out with both halves present: a deployed vault in
+   * the env and a wallet connected on the right chain. Missing either one is not
+   * an error, it is the fixture path, and every action below has that branch in
+   * its own body.
+   */
+  const canWrite =
+    writeConfigured &&
+    (walletState.kind === "idle" ||
+      walletState.kind === "tx-confirmed" ||
+      walletState.kind === "tx-rejected" ||
+      walletState.kind === "tx-failed");
 
   const active = vaultList.find((v) => v.id === activeId) ?? vaultList[0];
   const openWindow =
@@ -74,6 +111,13 @@ export function StandingPlanConsole({
       ? { ...openWindow, state: "Trading" as const }
       : openWindow;
 
+  // Data enters through the server component, never through a chained effect.
+  // router.refresh() re-runs app/console/page.tsx and the new props arrive here,
+  // so this is the one place local state follows the chain.
+  useEffect(() => {
+    setVaultList(initialVaults);
+  }, [initialVaults]);
+
   // Tick the demo clock only while a position is actually open.
   useEffect(() => {
     if (active.status !== "ACTIVE" || !active.openMarketId) return;
@@ -81,10 +125,21 @@ export function StandingPlanConsole({
     return () => clearInterval(timer);
   }, [active.status, active.openMarketId, active.id]);
 
-  // Countdown reaching zero is the settlement block. Nobody clicks anything: the
-  // same sequence the reactivity handler runs on chain runs here.
+  // Countdown reaching zero is the settlement block. Nobody clicks anything.
+  //
+  // Two paths, both silent. On the chain path the roll already happened inside
+  // the settlement block, so the console re-reads it off the RollSettled logs.
+  // On the fixture path settleAndRoll() runs the mirror of that same sequence.
+  // The demo clock caption under the ring is unchanged either way.
   useEffect(() => {
     if (secondsLeft > 0) return;
+
+    if (source === "chain") {
+      router.refresh();
+      setSecondsLeft(DEMO_WINDOW_SECONDS);
+      return;
+    }
+
     setVaultList((list) =>
       list.map((v) => {
         if (v.id !== activeId) return v;
@@ -93,24 +148,47 @@ export function StandingPlanConsole({
       })
     );
     setSecondsLeft(DEMO_WINDOW_SECONDS);
-  }, [secondsLeft, activeId, windows]);
+  }, [secondsLeft, activeId, windows, source, router]);
 
-  const errors = useMemo(() => {
-    const list: string[] = [];
-    if (form.deposit <= 0) list.push("Deposit must be greater than zero.");
-    if (form.stakePerWindow <= 0) list.push("Stake per window must be greater than zero.");
-    if (form.stakePerWindow > form.deposit)
-      list.push("Stake per window cannot exceed the deposit.");
-    if (form.windows < 1 || form.windows > 24)
-      list.push("Pick between 1 and 24 windows.");
-    if (form.maxConsecutiveLosses < 1)
-      list.push("The consecutive loss limit has to be at least 1.");
-    if (form.floorBalance >= form.deposit)
-      list.push("The floor has to sit below the deposit or the plan halts immediately.");
-    if (form.takeProfit <= form.deposit)
-      list.push("Take profit has to sit above the deposit.");
-    return list;
+  // One definition of what a valid plan is, in lib/schemas.ts. The console
+  // renders the messages the schema produced and the encoder refuses anything
+  // that did not parse, so the two can never disagree.
+  const errors = useMemo<string[]>(() => {
+    const parsed = parsePlanForm(form);
+    return parsed.ok ? [] : parsed.issues;
   }, [form]);
+
+  // --- wallet ------------------------------------------------------------
+
+  async function handleConnect() {
+    setWalletState({ kind: "connecting" });
+    setWalletState(await connectWallet());
+  }
+
+  async function handleSwitchNetwork() {
+    setWalletState({ kind: "connecting" });
+    setWalletState(await ensureChain());
+  }
+
+  /**
+   * Send a list of calls in order, stopping at the first one that does not
+   * confirm. Approve then deposit is the only two call sequence in the app.
+   * The idempotency guard lives in lib/tx.ts, so a second click on a control
+   * that somehow escaped the disabled state still sends one transaction.
+   */
+  const runCalls = useCallback(
+    async (calls: readonly VaultCall[]): Promise<boolean> => {
+      for (const call of calls) {
+        setWalletState({ kind: "connecting" });
+        const result = await sendVaultTx(call, setWalletState);
+        setWalletState(result);
+        if (result.kind !== "tx-confirmed") return false;
+      }
+      router.refresh();
+      return true;
+    },
+    [router]
+  );
 
   function selectVault(id: string) {
     setActiveId(id);
@@ -123,7 +201,9 @@ export function StandingPlanConsole({
 
   /** One signature: writes the plan, queues three windows, opens the subscription. */
   function writePlan() {
-    if (errors.length > 0) return;
+    const parsed = parsePlanForm(form);
+    if (!parsed.ok) return;
+
     const queue = windows
       .filter(
         (w) =>
@@ -132,6 +212,22 @@ export function StandingPlanConsole({
       .map((w) => w.marketId);
     if (queue.length === 0) return;
 
+    if (canWrite) {
+      // Real path, DEMO.md step 1. Approve when the standing allowance is short,
+      // deposit, then one startPlan that writes the plan, queues the windows,
+      // funds the subscription out of msg.value and enters the first window.
+      void (async () => {
+        const funding = await depositCalls(parsed.plan.deposit, decimals);
+        const plan = startPlanCall(parsed.plan, queue.slice(0, 3), decimals);
+        if (!plan) return;
+        await runCalls([...funding, plan]);
+      })();
+      return;
+    }
+
+    // Fallback, in the same function: no vault address or no connected wallet,
+    // so the card moves locally and the wallet strip says the write was
+    // simulated. This is the path the deployed demo URL runs on.
     updateVault(activeId, (v) => ({
       ...v,
       balance: round2(form.deposit - form.stakePerWindow),
@@ -166,6 +262,27 @@ export function StandingPlanConsole({
 
   /** Permissionless: refills the queue without touching the plan or the money. */
   function armNext() {
+    if (canWrite) {
+      const known = new Set([
+        ...active.queue,
+        ...active.ledger.map((e) => e.marketId),
+      ]);
+      const more = windows
+        .filter(
+          (w) =>
+            (!active.plan || w.asset === active.plan.asset) &&
+            !known.has(w.marketId)
+        )
+        .map((w) => w.marketId)
+        .slice(0, 3);
+      const call = armNextCall(more);
+      if (call) {
+        void runCalls([call]);
+        return;
+      }
+    }
+
+    // Fallback, same function: local queue update on the fixture path.
     updateVault(activeId, (v) => {
       if (!v.plan) return v;
       const known = new Set([...v.queue, ...v.ledger.map((e) => e.marketId)]);
@@ -178,6 +295,15 @@ export function StandingPlanConsole({
   }
 
   function halt() {
+    if (canWrite) {
+      const call = haltCall();
+      if (call) {
+        void runCalls([call]);
+        return;
+      }
+    }
+
+    // Fallback, same function.
     updateVault(activeId, (v) => ({
       ...v,
       status: "STOPPED",
@@ -186,6 +312,15 @@ export function StandingPlanConsole({
   }
 
   function withdrawAll() {
+    if (canWrite) {
+      const call = withdrawCall(active.balance, decimals);
+      if (call) {
+        void runCalls([call]);
+        return;
+      }
+    }
+
+    // Fallback, same function.
     updateVault(activeId, (v) => ({
       ...v,
       balance: 0,
@@ -245,6 +380,15 @@ export function StandingPlanConsole({
           {sourceNote}
         </p>
       ) : null}
+
+      <WalletPanel
+        state={walletState}
+        explorerBase={explorerBase}
+        writeConfigured={writeConfigured}
+        expectedChainId={CHAIN_ID}
+        onConnect={() => void handleConnect()}
+        onSwitchNetwork={() => void handleSwitchNetwork()}
+      />
 
       <div className="grid gap-6 lg:grid-cols-5">
         <Card className="lg:col-span-2">
@@ -349,10 +493,14 @@ export function StandingPlanConsole({
                   </ul>
                 ) : null}
 
+                {/* Bound to the wallet state, never to a timer. While a
+                    transaction is in flight this control cannot be pressed
+                    again, which is the first half of the duplicate guard. The
+                    second half is withIdempotency() in lib/tx.ts. */}
                 <Button
                   className="w-full"
                   size="lg"
-                  disabled={errors.length > 0}
+                  disabled={errors.length > 0 || isBusy(walletState)}
                   onClick={writePlan}
                 >
                   Write plan, queue 3 windows, subscribe
@@ -402,15 +550,30 @@ export function StandingPlanConsole({
                 </dl>
 
                 <div className="flex flex-wrap gap-2">
-                  <Button size="sm" variant="outline" onClick={armNext}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={isBusy(walletState)}
+                    onClick={armNext}
+                  >
                     Arm 3 more windows
                   </Button>
                   {active.status === "ACTIVE" ? (
-                    <Button size="sm" variant="destructive" onClick={halt}>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      disabled={isBusy(walletState)}
+                      onClick={halt}
+                    >
                       Halt the plan
                     </Button>
                   ) : (
-                    <Button size="sm" variant="secondary" onClick={withdrawAll}>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={isBusy(walletState)}
+                      onClick={withdrawAll}
+                    >
                       Withdraw {formatUsd(active.balance)} USDso
                     </Button>
                   )}
@@ -493,27 +656,7 @@ export function StandingPlanConsole({
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-col items-center gap-4 rounded-lg border border-dashed border-border px-6 py-10 text-center">
-                  <Image
-                    src="/illustrations/roll-loop.svg"
-                    alt=""
-                    width={200}
-                    height={132}
-                    className="opacity-80"
-                  />
-                  <div className="max-w-sm space-y-1">
-                    <p className="text-sm font-medium">
-                      {active.status === "IDLE"
-                        ? "No position open"
-                        : stopReasonLabel(active.stopReason)}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {active.status === "IDLE"
-                        ? "Write a plan on the left and the vault takes the first window straight away."
-                        : "The balance stays in the vault. Withdraw it, or write a new plan when you want to start again."}
-                    </p>
-                  </div>
-                </div>
+                <VaultEmptyState vault={active} />
               )}
 
               <div>
@@ -543,6 +686,10 @@ export function StandingPlanConsole({
                 </div>
               </div>
 
+              {/* This line counts plan signatures only. The deposit is its own
+                  step in DEMO.md (an approve when the allowance is short, then
+                  the deposit), so it is not part of the number, and the number
+                  itself does not change. */}
               <p className="text-xs text-muted-foreground">
                 Signatures used:{" "}
                 <span className="tabular font-medium text-foreground">
@@ -567,10 +714,7 @@ export function StandingPlanConsole({
             </CardHeader>
             <CardContent>
               {active.ledger.length === 0 ? (
-                <p className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
-                  No rolls yet. The first entry lands the moment the open window
-                  settles.
-                </p>
+                <LedgerEmptyState vault={active} />
               ) : (
                 // Ledger rows carry a hash, a block number and a balance, so the
                 // row scrolls inside its own box rather than pushing the page
@@ -662,6 +806,55 @@ export function StandingPlanConsole({
           </Card>
         </div>
       </div>
+    </div>
+  );
+}
+
+// --- empty states --------------------------------------------------------
+
+/**
+ * No open position. Named and exported so the state triad on /console is
+ * greppable: this is the empty half of the vault card, the skeleton lives in
+ * app/console/loading.tsx and the failure in app/console/error.tsx.
+ *
+ * Both wordings carry a call to action, because an empty box with no next step
+ * reads as a broken screen on camera. The illustration goes through next/image.
+ */
+export function VaultEmptyState({ vault }: { vault: Vault }) {
+  const idle = vault.status === "IDLE";
+  return (
+    <div className="flex flex-col items-center gap-4 rounded-lg border border-dashed border-border px-6 py-10 text-center">
+      <Image
+        src="/illustrations/roll-loop.svg"
+        alt=""
+        width={200}
+        height={132}
+        className="opacity-80"
+      />
+      <div className="max-w-sm space-y-1">
+        <p className="text-sm font-medium">
+          {idle ? "No position open" : stopReasonLabel(vault.stopReason)}
+        </p>
+        <p className="text-sm text-muted-foreground">
+          {idle
+            ? "Write a plan on the left and the vault takes the first window straight away."
+            : "The balance stays in the vault. Withdraw it, or write a new plan when you want to start again."}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/** No rolls yet. The call to action is what makes the first row appear. */
+export function LedgerEmptyState({ vault }: { vault: Vault }) {
+  return (
+    <div className="rounded-lg border border-dashed border-border px-4 py-8 text-center">
+      <p className="text-sm font-medium">No rolls yet</p>
+      <p className="mx-auto mt-1 max-w-[46ch] text-sm text-muted-foreground">
+        {vault.status === "ACTIVE"
+          ? "The first row lands the moment the open window settles. Let the countdown reach zero and watch it arrive, no signature needed."
+          : "Write a plan on the left. The first row lands the moment the first window settles."}
+      </p>
     </div>
   );
 }
