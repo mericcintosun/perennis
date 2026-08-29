@@ -6,14 +6,34 @@ for where the build currently is.
 ## Commands
 
 ```bash
-npm install     # install dependencies
-npm run dev     # local dev server on http://localhost:3000
-npm run build   # must stay green after every change
-npm run seed    # validates fixtures and rewrites fixtures/seed-manifest.json
+npm install            # install dependencies
+npm run dev            # local dev server on http://localhost:3000
+npm run build          # must stay green after every change
+npm run seed           # validates fixtures and rewrites fixtures/seed-manifest.json
+npm run test:contracts # cd contracts && forge test
 ```
 
 Contracts live in `contracts/` and build with `forge build` where Foundry is
 installed. They are excluded from `tsconfig.json`.
+
+## Mental map
+
+Two page routes and four API routes. There will still be two page routes after
+every phase.
+
+| Path | What it is |
+| --- | --- |
+| `app/page.tsx` | landing, static, no data fetching |
+| `app/console/page.tsx` | THE DEMO ROUTE, server component, reads through `getAdapter()` |
+| `app/api/windows/route.ts` | `ApiResponse<EventWindow[]>` |
+| `app/api/vaults/route.ts` | `ApiResponse<Vault[]>`, optional `address` query param |
+| `app/api/rolls/route.ts` | `ApiResponse<RollEntry[]>`, the roll ledger on its own, optional `address` and `limit` |
+| `app/api/health/route.ts` | the readiness probe, including `rollLedgerSource` |
+
+`lib/config.ts` holds every address, endpoint and tuning constant and imports
+nothing. `lib/errors.ts` is the error vocabulary, `lib/log.ts` the `[core]`
+logger, `lib/schemas.ts` the zod edge validation. Only two files in the repo read
+`process.env`: `lib/config.ts` and `lib/adapters/index.ts`.
 
 ## Stack pitfalls
 
@@ -34,6 +54,24 @@ installed. They are excluded from `tsconfig.json`.
 - `app/opengraph-image.png`, and never add an `app/opengraph-image.tsx` beside it
 - `contracts/script/Deploy.s.sol`
 - the settlement logic inside `contracts/src/PerennisVault.sol`
+
+### Fence lift, Phase 2 only, now spent
+
+Phase 2 was granted a named exception to that last rule for exactly four
+security fixes, and they are already applied. The lift is recorded here so a
+later phase does not read the diff and assume the fence is open:
+
+1. queue cap: `MAX_QUEUE_ADD`, `MAX_PENDING` and `error QueueFull()` on
+   `armNext` and on the `windowIds` loop in `startPlan`
+2. reentrancy lock: a `locked` flag and a `noReentry` modifier on `deposit`,
+   `withdraw` and `_onEvent`
+3. allowance reset: `collateral.approve(address(markets), 0)` on the success
+   branch of `_enterNext`, not only in the catch
+4. calldata guard: `_onEvent` returns early when `data.length < 32`
+
+`_evaluateStops`, the payout maths and every event name and signature are
+unchanged, so `lib/vault.ts` is still a valid mirror. The fence is closed again:
+anything beyond those four is off limits.
 
 ## Vercel guardrails
 

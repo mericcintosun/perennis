@@ -52,7 +52,7 @@ product rather than degrading it.
 | --- | --- | --- |
 | Somnia reactivity precompile `0x0100` | `contracts/src/PerennisVault.sol` | The vault opens its own subscription on `MarketResolved` and implements `ISomniaEventHandler._onEvent`. This is what makes the roll happen in the settlement block with no keeper. |
 | DreamDEX BinaryMarketsModule | `contracts/src/PerennisVault.sol`, `lib/dreamdex.ts` | `redeem` converts the winning ERC-6909 outcome token back to collateral, `buy` enters the next window, `marketState` gates the write on lifecycle state 1 (Trading). |
-| Chain reads for the console | `lib/dreamdex.ts` | `fetchVaults` reads `snapshot()` and `plan()` off the deployed vault with viem, `fetchEventWindows` reads live market lifecycle state, `fetchCollateralDecimals` reads decimals off the token instead of assuming 6. |
+| Chain reads for the console | `lib/dreamdex.ts` | `fetchVaults` reads `snapshot()` and `plan()` off the deployed vault with viem, `fetchRollLedger` builds the whole roll ledger from `RollSettled` logs so every row links to a real Shannon transaction, `fetchEventWindows` reads live market lifecycle state, `fetchCollateralDecimals` reads decimals off the token instead of assuming 6. |
 
 Every screen and every API route reads through one interface, `PerennisAdapter`
 in `lib/adapters/`. `ADAPTER_MODE=fake` serves the fixtures in `fixtures/`,
@@ -97,14 +97,41 @@ deploy commands are in [contracts/README.md](contracts/README.md), including the
 `cast` calls for the tUSDC faucet, the deposit, and `startPlan`.
 
 ```bash
-npm run build   # must stay green
-npm run seed    # checks fixtures/*.json and rewrites fixtures/seed-manifest.json
+npm run build      # must stay green
+npm run seed       # checks fixtures/*.json and rewrites fixtures/seed-manifest.json
+npm run test:contracts   # cd contracts && forge test, needs Foundry installed
 ```
+
+## Running against Shannon
+
+Three env keys flip the whole app from fixtures onto the chain. Put them in
+`.env.local` (see `.env.example` for where each value comes from):
+
+```bash
+ADAPTER_MODE=real
+NEXT_PUBLIC_CONTRACT_ADDRESS=      # the deployed PerennisVault
+NEXT_PUBLIC_BINARY_MARKETS_MODULE= # DreamDEX BinaryMarketsModule on Shannon
+```
+
+`NEXT_PUBLIC_COLLATERAL_TOKEN` already points at tUSDC and only needs changing
+if you move collateral. Nothing else is required, and no key in this app holds a
+secret: the deployer key lives behind `FARM_EVM_PRIVATE_KEY`, is used by forge
+only, and is read by no file under `app/`, `components/` or `lib/`.
+
+`GET /api/health` is how you check whether the flip took. It reports
+`adapterMode`, `chainId`, the collateral `decimals` it actually read,
+`vaultAddressSet`, the reactivity precompile address, and `rollLedgerSource`.
+That last field is the one that matters: it says `"chain"` once the ledger is
+being built from `RollSettled` logs and `"seed"` while the console is still on
+fixtures. `GET /api/rolls` returns the ledger on its own, and takes an optional
+`limit` (1 to 12) and `address`.
+
+Every read falls back rather than failing. A missing address, a timeout or a
+rejected call comes back as `source: "seed"` with a written reason in `note`,
+which the console renders as a badge. There is no error page on this path.
 
 ## What we would build next
 
-- Read the roll ledger back from `RollSettled` logs with `getLogs` instead of
-  seeding it, so the timeline is entirely chain sourced.
 - Replace the hardcoded market id list with `@somnia-chain/markets-sdk`
   `loadMarkets()` plus `isBinaryMarket()`, and take the order book from
   `fetchOrderBook()` so implied probability is live rather than a snapshot.

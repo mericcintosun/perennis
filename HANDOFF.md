@@ -72,9 +72,13 @@ app/
                               reads through getAdapter() and renders the console
   console/loading.tsx         skeleton matching the console grid
   api/windows/route.ts        GET, ApiResponse<EventWindow[]> via getAdapter()
-  api/vaults/route.ts         GET, ApiResponse<Vault[]> via getAdapter()
+  api/vaults/route.ts         GET, ApiResponse<Vault[]> via getAdapter(), with
+                              an optional address query param validated by zod
+  api/rolls/route.ts          GET, ApiResponse<RollEntry[]>, the roll ledger on
+                              its own. Optional address and limit params
   api/health/route.ts         GET, adapter mode, chain id, decimals, whether a
-                              vault address is set. Phase 2's readiness probe
+                              vault address is set, the reactivity precompile
+                              and rollLedgerSource. The readiness probe
   globals.css                 ALL colors live here as CSS variables. Palette:
                               #0B0F14 ground, #2DD4BF teal accent, #F5A524 amber
                               (stop rules and losses only), #94A3B8 slate
@@ -93,6 +97,11 @@ components/
   ui/                         shadcn primitives (button, card, badge, input).
                               Extend here, never style inline
 lib/
+  config.ts                   every address, endpoint and tuning constant.
+                              Imports nothing, not even viem
+  errors.ts                   CoreErrorCode, CoreFailure, coreFailure()
+  log.ts                      the [core] logger. Ids, hashes, counts, durations
+  schemas.ts                  zod schemas the API routes parse queries with
   types.ts                    every domain type plus ApiResponse<T>. No values
   data/seed.ts                typed re-export of the fixtures, plus planDefaults
   adapters/types.ts           the PerennisAdapter interface
@@ -145,8 +154,9 @@ public/
   `getMarket(bytes32)` per known market id. The market id list is hardcoded and
   the ABI is written from the docs, not verified on chain. Replace with
   `@somnia-chain/markets-sdk` `loadMarkets()` + `isBinaryMarket()`.
-- `fetchVaults()` ledger field. Vault numbers would come from the chain but
-  `ledger:` is still seeded. Replace with `getLogs` on the `RollSettled` event.
+- ~~`fetchVaults()` ledger field.~~ Done in Phase 2. `fetchRollLedger()` in
+  `lib/dreamdex.ts` builds the ledger from `getLogs` on `RollSettled`, and the
+  fixture ledger is only the fallback. See section 7.
 - `resolveWindow()` in `lib/vault.ts`. Deterministic draw seeded from the market
   id, weighted by the implied probability on the book, so demo runs repeat
   exactly. On chain this comes from the settlement event payload.
@@ -427,3 +437,174 @@ gas on `https://dream-rpc.somnia.network` (chain 50312), plus whatever the
 reactivity subscription's 32 SOMI equivalent turns out to be on Shannon, and
 tUSDC through `faucet(uint256)` on
 `0x70a86D8842FB63C4Ad2b7cdddF530eBf1BB25d8E`.
+
+---
+
+## 7. Phase 2 record, the roll ledger comes off the chain
+
+### Goal
+
+Take one mechanism off fixtures: the vault snapshot and the roll ledger, read
+off a deployed `PerennisVault` on Shannon with the ledger built from
+`RollSettled` logs instead of `syntheticTxHash()` in `lib/vault.ts`. That makes
+`DEMO.md` step 5 real, because the new ledger row links to a real Shannon
+explorer transaction and its "validator call" badge is derived from the
+transaction sender rather than asserted.
+
+### Status
+
+Written, not executed. Nothing in this phase was run: no `npm install`, no
+`npm run build`, no `forge test`, no RPC call against Shannon. Treat every
+command dependent claim as unverified.
+
+**The mechanism that went real:** the vault snapshot (`fetchVaults()`) and the
+roll ledger (`fetchRollLedger()`), both in `lib/dreamdex.ts`. The ledger reads
+`RollSettled` logs off `NEXT_PUBLIC_CONTRACT_ADDRESS`, keeps the most recent 12,
+reads `rollAt(index)` for the stake, direction and settlement timestamp the
+event payload does not carry, and derives `trigger` by comparing the sender of
+the emitting transaction against `owner()` on the vault. A sender that is not
+the owner is labelled `"reactivity"` and the console badge reads "validator
+call"; the owner is labelled `"manual"` and the badge reads "owner call".
+
+**Adapter methods still on fixtures:**
+
+- `getEventWindows()`. Market discovery is still a hardcoded id list with a
+  per id `getMarket(bytes32)` overlay. The `@somnia-chain/markets-sdk`
+  `loadMarkets()` plus `isBinaryMarket()` swap is Phase 3.
+- `resolveWindow()` in `lib/vault.ts`, the deterministic draw.
+- `settleAndRoll()` in `lib/vault.ts`, the mirror that drives the console clock.
+- `DEMO_WINDOW_SECONDS = 20` in `components/standing-plan-console.tsx`, the demo
+  clock, still labelled as one on screen.
+- `getCollateralDecimals()` reads the real token when
+  `NEXT_PUBLIC_COLLATERAL_TOKEN` is set, and returns 6 otherwise.
+
+**Env keys the runner must fill** to see any of this against the chain:
+
+| Key | Value |
+| --- | --- |
+| `ADAPTER_MODE` | `real` |
+| `NEXT_PUBLIC_CONTRACT_ADDRESS` | the deployed `PerennisVault` address |
+| `NEXT_PUBLIC_BINARY_MARKETS_MODULE` | DreamDEX BinaryMarketsModule on Shannon |
+
+`NEXT_PUBLIC_COLLATERAL_TOKEN` is already filled with tUSDC.
+`NEXT_PUBLIC_CHAIN_ID`, `NEXT_PUBLIC_SOMNIA_RPC_URL` and
+`NEXT_PUBLIC_EXPLORER_URL` have working defaults.
+
+No key with a `NEXT_PUBLIC_` prefix holds a secret. The deployer key is used by
+forge on the command line and is read by no file under `app/`, `components/` or
+`lib/`.
+
+### Decisions
+
+- **`lib/config.ts` is the only config reader.** Every address, endpoint and
+  tuning constant moved there and it imports nothing, not even viem, so a client
+  file that pulls it in cannot drag the RPC layer into the bundle. Only two
+  files in the repo read `process.env` now: `lib/config.ts` and
+  `lib/adapters/index.ts`, which needs `ADAPTER_MODE` before any config loads.
+- **`app/layout.tsx`, `app/console/page.tsx` and `app/api/health/route.ts` no
+  longer import `lib/dreamdex.ts`.** They wanted the chain id and the explorer
+  base, which are config, so they take `CHAIN_ID` and `EXPLORER_URL` from
+  `lib/config.ts`. That keeps viem out of three module graphs it had no reason
+  to be in.
+- **One retry loop, in one function.** `withTimeoutAndRetry()` in
+  `lib/dreamdex.ts` wraps every outbound call. Worst case latency for a single
+  read is `RPC_TIMEOUT_MS * (RPC_RETRY_COUNT + 1)`, both from `lib/config.ts`.
+  There is no second retry loop on the core path.
+- **Provider messages are never passed through.** `lib/errors.ts` classifies a
+  throw by shape, not by text, and every `note` is a sentence written by us.
+  Provider strings carry RPC URLs and sometimes request bodies, and those do not
+  belong on a page.
+- **The ledger read is bounded three times over**: `fromBlock` is `latest`
+  minus `LEDGER_LOOKBACK_BLOCKS`, at most `MAX_LEDGER_ROWS` logs are kept, and
+  the per row follow up reads only run over those. Transaction reads are
+  deduplicated by hash, so twelve rows from three transactions cost three calls.
+- **The "validator call" badge is now derived.** It was hardcoded in
+  `components/standing-plan-console.tsx`. It reads `entry.trigger`, which is
+  `"reactivity"` for every fixture row, so the fake path renders exactly what it
+  rendered before.
+- **`app/api/rolls/route.ts` accepts `address` but does not route on it.** This
+  deployment reads one vault. The parameter is validated and reserved so the
+  factory work in a later phase does not change this endpoint's contract.
+- **One new dependency, the pre-approved one.** `zod ^3.24.1`. No markets SDK,
+  no wagmi, no rainbowkit.
+
+### Failed attempts and deviations
+
+- **`_settleAndRoll` still opens with an interaction.** The acceptance list asks
+  for checks, effects, interactions there, but `markets.redeem(marketId)` has to
+  run before the payout is known, so the first statement in that function is an
+  external call and no reordering fixes that without changing the payout maths,
+  which the fence forbids. The mitigation is the `noReentry` lock on `_onEvent`,
+  the only path that reaches `_settleAndRoll`. `withdraw` and `deposit` do read
+  correctly, and `deposit` documents its exception in the file.
+- **A voided market reads as `LOST` on the chain path.** `RollSettled` carries a
+  `bool won`, not a three way outcome, so `fetchRollLedger()` cannot tell a
+  voided window (which pays 0.5 to both sides) from a loss. The fixture path
+  still has `VOIDED` rows. Fixing this needs an event signature change, which
+  the fence forbids, so it is recorded here instead. See the open questions.
+- **`entryCents` is derived, not read.** The entry price is not in the event
+  payload. A winning roll pays 1 per contract, so stake divided by payout is the
+  price actually paid; otherwise the matching fixture window's book price is
+  used; a losing roll on an unknown market leaves 0, which renders as "0c"
+  rather than an invented number.
+- **`settledAt` falls back to the epoch** on the rare row where the `rollAt`
+  follow up read fails but the log itself came through. That renders as
+  "00:00:00 UTC". Better than dropping a real row or inventing a time.
+
+### Files changed
+
+Added: `lib/config.ts`, `lib/errors.ts`, `lib/log.ts`, `lib/schemas.ts`,
+`app/api/rolls/route.ts`.
+
+Changed: `lib/dreamdex.ts`, `lib/adapters/types.ts`, `lib/adapters/fake.ts`,
+`lib/adapters/chain.ts`, `lib/adapters/index.ts`, `app/api/vaults/route.ts`,
+`app/api/health/route.ts`, `app/console/page.tsx`, `app/layout.tsx`,
+`components/standing-plan-console.tsx`, `contracts/src/PerennisVault.sol`,
+`contracts/test/PerennisVault.t.sol`, `package.json`, `.env.example`,
+`README.md`, `CLAUDE.md`, `HANDOFF.md`.
+
+Deleted: nothing.
+
+### Commands the runner should run
+
+```bash
+npm install            # picks up zod ^3.24.1
+npm run build          # must pass with zero TypeScript errors
+npm run seed           # twice, fixtures/seed-manifest.json must be identical
+npm run test:contracts # cd contracts && forge test, fuzz case included
+```
+
+Then deploy the vault to Shannon, write the address into `.env.local` as
+`NEXT_PUBLIC_CONTRACT_ADDRESS` and into `README.md`, set `ADAPTER_MODE=real`,
+and check `GET /api/health`: `adapterMode` should read `"real"`,
+`vaultAddressSet` should be `true`, and `rollLedgerSource` should read
+`"chain"` once one settlement has happened. `GET /api/rolls` returns the ledger
+on its own. Then spot check `/console` on the live URL with `ADAPTER_MODE`
+unset, to confirm the fake path still renders.
+
+### Open questions for the human
+
+1. **Voided markets on the chain ledger.** `RollSettled` carries `bool won`, so
+   a voided window is indistinguishable from a loss when read back. Options:
+   add a `uint8 outcome` to the event (breaks the "rename no event" rule in
+   spirit and needs `lib/vault.ts` updated in the same edit), read the markets
+   module for the settlement mode per row (one more RPC call per row), or leave
+   it. Safe default taken: leave it, and record the gap here.
+2. **The `address` query parameter on `/api/rolls` and `/api/vaults`.** Both
+   validate it and `/api/vaults` filters on it, but neither can serve a vault
+   other than the configured one. Confirm that this is the right shape to keep
+   before the factory work in a later phase.
+3. **`MAX_PENDING = 32` on the queue.** A plan with more than 32 windows would
+   need repeated `armNext` calls rather than one big one. The demo plan is 8
+   windows, so this is far off the path, but it is a real limit and worth a
+   nod.
+
+### Next best step for Phase 3
+
+Wallet connect and the write path (section 3E), then live market discovery
+(section 3C). The read side is now done: `lib/adapters/chain.ts` serves the
+console and all four API routes off Shannon with no page file touched, and
+`GET /api/health` says whether it took. What is left on the demo path is that
+`deposit`, `startPlan`, `armNext`, `halt` and `withdraw` still mutate local
+state in `components/standing-plan-console.tsx` instead of sending a
+transaction.
