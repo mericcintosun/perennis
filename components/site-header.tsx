@@ -18,7 +18,10 @@ export function SiteHeader({ chainId }: { chainId: number }) {
 
   return (
     <header className="sticky top-0 z-20 border-b border-border bg-background/85 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-6">
+      {/* The row wraps instead of pushing the page sideways. min-h rather than a
+          fixed h, so a wrapped header grows down and the sticky bar keeps its
+          16 units of height at every width above that. */}
+      <div className="mx-auto flex min-h-16 max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-6 py-2 sm:py-0">
         <Link href="/" className="flex items-center gap-3">
           <Image
             src="/brand/logo.png"
@@ -59,8 +62,13 @@ export function SiteHeader({ chainId }: { chainId: number }) {
                     <Link
                       href={link.href}
                       aria-current={current ? "page" : undefined}
+                      // Two links fit at 360px, so both stay visible. A
+                      // disclosure menu behind a hamburger would be one extra
+                      // tap to reach half a nav, which is worse on a phone than
+                      // the nav itself. The explicit min height is what makes
+                      // each one a real target.
                       className={cn(
-                        "rounded-md px-3 py-1.5 text-sm transition-colors",
+                        "inline-flex min-h-11 items-center rounded-md px-3 py-1.5 text-sm transition-colors sm:min-h-0",
                         current
                           ? "bg-secondary font-medium text-primary"
                           : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
