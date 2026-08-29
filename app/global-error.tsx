@@ -4,9 +4,12 @@
 // Next falls back to the internal pages/_error for /500 at build time, which
 // renders <Html> outside a document context and fails the export.
 //
-// A global error replaces the root layout, so it has to render its own
-// <html> and <body>. It cannot use the design tokens either: globals.css is
-// imported by the layout this boundary is standing in for.
+// A global error replaces the root layout, so it renders its own <html> and
+// <body> and imports the tokens itself: the layout that normally pulls
+// globals.css in is the thing this boundary is standing in for. Colors stay in
+// app/globals.css, this file only names the variables.
+import "./globals.css";
+
 export default function GlobalError({ reset }: { error: Error; reset: () => void }) {
   return (
     <html lang="en">
@@ -19,14 +22,14 @@ export default function GlobalError({ reset }: { error: Error; reset: () => void
           alignItems: "center",
           justifyContent: "center",
           gap: "1rem",
-          background: "#0b0f14",
-          color: "#e6edf3",
+          background: "var(--background)",
+          color: "var(--foreground)",
           fontFamily:
             'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
         }}
       >
         <h2 style={{ fontSize: "1.25rem", fontWeight: 600, margin: 0 }}>
-          Something went wrong
+          Perennis hit a problem
         </h2>
         <button
           onClick={() => reset()}
@@ -36,8 +39,8 @@ export default function GlobalError({ reset }: { error: Error; reset: () => void
             padding: "0.5rem 1.25rem",
             fontSize: "0.875rem",
             fontWeight: 500,
-            background: "#2dd4bf",
-            color: "#04231f",
+            background: "var(--primary)",
+            color: "var(--primary-foreground)",
             cursor: "pointer",
           }}
         >
