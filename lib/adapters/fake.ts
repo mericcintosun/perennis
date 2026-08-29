@@ -5,7 +5,7 @@
 // checkout with an empty .env.local runs the whole demo path off this file.
 
 import { eventWindows, vaults } from "@/lib/data/seed";
-import type { ApiResponse, EventWindow, Vault } from "@/lib/types";
+import type { ApiResponse, EventWindow, RollEntry, Vault } from "@/lib/types";
 import type { PerennisAdapter } from "./types";
 
 /** tUSDC on Shannon is 6 decimals. The chain adapter reads it off the token. */
@@ -32,6 +32,11 @@ export function createFakeAdapter(note?: string): PerennisAdapter {
     },
     async getCollateralDecimals(): Promise<ApiResponse<number>> {
       return wrap(SEED_DECIMALS);
+    },
+    // Vault 02 is the seeded live vault, the one the console opens on and the
+    // one the chain adapter replaces with the deployed vault.
+    async getRollLedger(): Promise<ApiResponse<RollEntry[]>> {
+      return wrap(vaults[1].ledger);
     },
   };
 }

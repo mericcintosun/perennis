@@ -12,16 +12,23 @@
 
 import { createFakeAdapter, fakeAdapter } from "./fake";
 import { chainAdapter } from "./chain";
+import { VAULT_ADDRESS } from "@/lib/config";
 import type { AdapterMode, PerennisAdapter } from "./types";
 
 export type { AdapterMode, PerennisAdapter } from "./types";
 
+/**
+ * The one process.env read outside lib/config.ts. It has to live here because
+ * the adapter selector answers this question before any config is loaded, and
+ * because ADAPTER_MODE is server only: it carries no NEXT_PUBLIC_ prefix on
+ * purpose, so it never reaches the browser bundle.
+ */
 export function adapterMode(): AdapterMode {
   return process.env.ADAPTER_MODE === "real" ? "real" : "fake";
 }
 
 export function vaultAddressSet(): boolean {
-  return Boolean(process.env.NEXT_PUBLIC_CONTRACT_ADDRESS);
+  return Boolean(VAULT_ADDRESS);
 }
 
 export function getAdapter(): PerennisAdapter {

@@ -627,11 +627,22 @@ export function StandingPlanConsole({
                           <span className="tabular">
                             block {entry.blockNumber.toLocaleString("en-US")}
                           </span>
+                          {/* Derived, not decorative. On the chain path the
+                              sender of the transaction that emitted RollSettled
+                              is compared against owner() on the vault, so this
+                              badge is the claim DEMO.md step 5 makes on camera. */}
                           <Badge
                             variant="outline"
-                            className="border-primary/40 px-2 py-0 font-normal text-primary"
+                            className={cn(
+                              "px-2 py-0 font-normal",
+                              entry.trigger === "reactivity"
+                                ? "border-primary/40 text-primary"
+                                : "border-border text-muted-foreground"
+                            )}
                           >
-                            validator call
+                            {entry.trigger === "reactivity"
+                              ? "validator call"
+                              : "owner call"}
                           </Badge>
                           <a
                             className="font-mono underline underline-offset-4 hover:text-foreground"

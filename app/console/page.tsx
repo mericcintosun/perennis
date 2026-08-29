@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { StandingPlanConsole } from "@/components/standing-plan-console";
 import { getAdapter } from "@/lib/adapters";
-import { somniaShannon } from "@/lib/dreamdex";
+// Config, not chain code. Importing the explorer base from lib/config.ts rather
+// than from lib/dreamdex.ts keeps viem out of this page's module graph.
+import { EXPLORER_URL } from "@/lib/config";
 
 // Reads happen per request rather than at build time, so a deployed vault
 // address shows live state instead of whatever was true when it built.
@@ -47,7 +49,7 @@ export default async function ConsolePage() {
         source={source}
         sourceNote={note}
         decimals={decimals.data}
-        explorerBase={somniaShannon.blockExplorers.default.url}
+        explorerBase={EXPLORER_URL}
       />
     </section>
   );
