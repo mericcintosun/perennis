@@ -10,7 +10,13 @@ function Block({ className }: { className?: string }) {
   );
 }
 
-export default function ConsoleLoading() {
+/**
+ * The loading half of the /console state triad, named and exported so it is
+ * greppable next to ConsoleErrorState in app/console/error.tsx and the two empty
+ * states in components/standing-plan-console.tsx. Next needs a default export
+ * from this file, so the default below is a one line wrapper around it.
+ */
+export function ConsoleSkeleton() {
   return (
     <section
       className="mx-auto max-w-6xl px-6 py-12 sm:py-16"
@@ -75,4 +81,8 @@ export default function ConsoleLoading() {
       </div>
     </section>
   );
+}
+
+export default function ConsoleLoading() {
+  return <ConsoleSkeleton />;
 }
