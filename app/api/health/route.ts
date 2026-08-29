@@ -1,13 +1,18 @@
 // One place to ask whether this deployment is talking to a chain yet.
 //
-// Phase 2 points its checks here instead of guessing from the page. It reports
-// what is configured, never a secret: no RPC key, no private key, no address
-// beyond a boolean saying whether one is set.
+// This is the readiness probe for the ADAPTER_MODE flip. It reports what is
+// configured, never a secret: no RPC key, no private key, no address beyond a
+// boolean saying whether one is set. The reactivity precompile is the one
+// address printed in full, and it is a protocol constant that is the same for
+// everyone.
+//
+// rollLedgerSource is the field that answers the Phase 2 question: did the roll
+// ledger actually come off the chain, or is the console still showing fixtures?
 
 import { NextResponse } from "next/server";
 import { adapterMode, getAdapter, vaultAddressSet } from "@/lib/adapters";
-import { somniaShannon } from "@/lib/dreamdex";
-import type { ApiResponse } from "@/lib/types";
+import { CHAIN_ID, REACTIVITY_PRECOMPILE } from "@/lib/config";
+import type { ApiResponse, DataSource } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -16,20 +21,32 @@ interface Health {
   chainId: number;
   decimals: number;
   vaultAddressSet: boolean;
+  /** Protocol constant, the same on every Somnia deployment. */
+  reactivityPrecompile: string;
+  /** "chain" once RollSettled logs are being read, "seed" while on fixtures. */
+  rollLedgerSource: DataSource;
 }
 
 export async function GET() {
-  const decimals = await getAdapter().getCollateralDecimals();
+  const adapter = getAdapter();
+  const [decimals, ledger] = await Promise.all([
+    adapter.getCollateralDecimals(),
+    adapter.getRollLedger(),
+  ]);
+
+  const note = ledger.note ?? decimals.note;
 
   const body: ApiResponse<Health> = {
     source: decimals.source,
     data: {
       adapterMode: adapterMode(),
-      chainId: somniaShannon.id,
+      chainId: CHAIN_ID,
       decimals: decimals.data,
       vaultAddressSet: vaultAddressSet(),
+      reactivityPrecompile: REACTIVITY_PRECOMPILE,
+      rollLedgerSource: ledger.source,
     },
-    ...(decimals.note ? { note: decimals.note } : {}),
+    ...(note ? { note } : {}),
   };
 
   return NextResponse.json(body, { status: 200 });
