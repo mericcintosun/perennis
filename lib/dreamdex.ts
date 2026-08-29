@@ -1,7 +1,7 @@
 // Somnia + DreamDEX integration layer.
 //
 // Every function here has two paths in one body: the real chain call when the
-// matching env var is set, and the seed data in lib/data.ts when it is not.
+// matching env var is set, and the fixtures in lib/data/seed.ts when it is not.
 // That means `npm run dev` with an empty .env.local gives a full working console,
 // and pointing NEXT_PUBLIC_CONTRACT_ADDRESS at a deployed PerennisVault switches
 // the same screen onto Shannon without touching a component.
@@ -16,15 +16,14 @@
 // to seed data, and the console shows the "seed data" badge instead of crashing.
 
 import { createPublicClient, http, defineChain, type Address } from "viem";
-import {
-  eventWindows,
-  vaults,
-  type DataSourceLabel,
-  type EventWindow,
-  type MarketState,
-  type Plan,
-  type Vault,
-} from "./data";
+import { eventWindows, vaults } from "./data/seed";
+import type {
+  ApiResponse,
+  EventWindow,
+  MarketState,
+  Plan,
+  Vault,
+} from "./types";
 
 export const somniaShannon = defineChain({
   id: Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? 50312),
@@ -58,16 +57,6 @@ export function explorerAddressUrl(address: string) {
 
 function publicClient() {
   return createPublicClient({ chain: somniaShannon, transport: http() });
-}
-
-/** Where a given screen's numbers came from. Shown in the console header. */
-export type DataSource = DataSourceLabel;
-
-export interface Sourced<T> {
-  source: DataSource;
-  data: T;
-  /** Set when the chain path was attempted and failed. */
-  note?: string;
 }
 
 const vaultAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as
@@ -169,7 +158,7 @@ const marketStateByCode: Record<number, MarketState> = {
  * isBinaryMarket() once the SDK is wired, so discovery stops needing a hardcoded
  * id list and the book comes from fetchOrderBook().
  */
-export async function fetchEventWindows(): Promise<Sourced<EventWindow[]>> {
+export async function fetchEventWindows(): Promise<ApiResponse<EventWindow[]>> {
   if (!marketsModule) return { source: "seed", data: eventWindows };
 
   try {
@@ -212,7 +201,7 @@ export async function fetchEventWindows(): Promise<Sourced<EventWindow[]>> {
  * Vault state. Chain path reads the deployed PerennisVault; the ABI above is
  * generated from the contract in this repo, so this call is the real thing.
  */
-export async function fetchVaults(): Promise<Sourced<Vault[]>> {
+export async function fetchVaults(): Promise<ApiResponse<Vault[]>> {
   if (!vaultAddress) return { source: "seed", data: vaults };
 
   try {

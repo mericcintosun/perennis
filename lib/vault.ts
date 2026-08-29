@@ -19,7 +19,7 @@ import type {
   RollOutcome,
   StopReason,
   Vault,
-} from "./data";
+} from "./types";
 
 /** Deterministic 32 bit hash so a given market id always resolves the same way. */
 function hashSeed(input: string): number {

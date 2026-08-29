@@ -13,13 +13,13 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import {
-  planDefaults,
-  type DataSourceLabel,
-  type Direction,
-  type EventWindow,
-  type Vault,
-} from "@/lib/data";
+import { planDefaults } from "@/lib/data/seed";
+import type {
+  DataSourceLabel,
+  Direction,
+  EventWindow,
+  Vault,
+} from "@/lib/types";
 import {
   entryPriceCents,
   formatUsd,
@@ -209,7 +209,7 @@ export function StandingPlanConsole({
   const rate = winRate(active);
 
   return (
-    <div id="console" className="scroll-mt-20">
+    <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           {vaultList.map((v) => (
@@ -572,7 +572,10 @@ export function StandingPlanConsole({
                   settles.
                 </p>
               ) : (
-                <ol className="space-y-0">
+                // Ledger rows carry a hash, a block number and a balance, so the
+                // row scrolls inside its own box rather than pushing the page
+                // sideways on a 375px screen.
+                <ol className="-mx-2 space-y-0 overflow-x-auto px-2">
                   {[...active.ledger].reverse().map((entry, i, arr) => (
                     <li
                       key={`${entry.marketId}-${entry.index}`}
@@ -789,36 +792,41 @@ function CountdownRing({
   const progress = running ? Math.min(1, secondsLeft / total) : 0;
 
   return (
-    <div className="relative size-[104px] shrink-0">
-      <svg viewBox="0 0 104 104" className="size-full -rotate-90">
-        <circle
-          cx="52"
-          cy="52"
-          r={radius}
-          fill="none"
-          strokeWidth="6"
-          className="stroke-border"
-        />
-        <circle
-          cx="52"
-          cy="52"
-          r={radius}
-          fill="none"
-          strokeWidth="6"
-          strokeLinecap="round"
-          className="stroke-primary transition-[stroke-dashoffset] duration-1000 ease-linear"
-          strokeDasharray={circumference}
-          strokeDashoffset={circumference * (1 - progress)}
-        />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="tabular text-2xl font-semibold">
-          {running ? `${secondsLeft}s` : "—"}
-        </span>
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-          {running ? "to settle" : "idle"}
-        </span>
+    <div className="flex shrink-0 flex-col items-center gap-2">
+      <div className="relative size-[104px]">
+        <svg viewBox="0 0 104 104" className="size-full -rotate-90">
+          <circle
+            cx="52"
+            cy="52"
+            r={radius}
+            fill="none"
+            strokeWidth="6"
+            className="stroke-border"
+          />
+          <circle
+            cx="52"
+            cy="52"
+            r={radius}
+            fill="none"
+            strokeWidth="6"
+            strokeLinecap="round"
+            className="stroke-primary transition-[stroke-dashoffset] duration-1000 ease-linear"
+            strokeDasharray={circumference}
+            strokeDashoffset={circumference * (1 - progress)}
+          />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="tabular text-2xl font-semibold">
+            {running ? `${secondsLeft}s` : "—"}
+          </span>
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            {running ? "to settle" : "idle"}
+          </span>
+        </div>
       </div>
+      <p className="max-w-[9rem] text-center text-[10px] leading-tight text-muted-foreground">
+        Demo clock: 20 seconds stands in for a real 15 minute window.
+      </p>
     </div>
   );
 }
