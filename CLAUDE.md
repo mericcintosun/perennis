@@ -31,6 +31,11 @@ every phase.
 | `app/api/rolls/route.ts` | `ApiResponse<RollEntry[]>`, the roll ledger on its own, optional `address` and `limit` |
 | `app/api/health/route.ts` | the readiness probe, including `rollLedgerSource` |
 
+`lib/markets.ts` is market discovery, three levels deep (the markets SDK, the per
+id `getMarket` read, then the fixtures), and `lib/rpc.ts` holds the Shannon
+client and the one retry loop that `lib/dreamdex.ts` and `lib/markets.ts` share.
+Both are server only.
+
 `lib/config.ts` holds every address, endpoint and tuning constant and imports
 nothing. `lib/errors.ts` is the error vocabulary, `lib/log.ts` the `[core]`
 logger, `lib/schemas.ts` the zod edge validation. Only two files in the repo read
@@ -112,7 +117,7 @@ of them.
 | `PositionOpened` | Step 2, the first window is entered and the card shows entry price and book |
 | `RollSettled` | Steps 4 and 5, the ledger row with its balance, block and validator call badge |
 | `PlanHalted` | Step 6, Vault 03 halted on two losses in a row |
-| `WindowsArmed`, `EntrySkipped` | Step 3, the queue count in the plan panel and the health strip |
+| `WindowsArmed`, `EntrySkipped` | Step 3, the queue count in the plan panel and the health strip. Step 7, the queue strip on the vault card, which names the queued market ids and the lifecycle state discovery read for each |
 
 ## Writing rules
 

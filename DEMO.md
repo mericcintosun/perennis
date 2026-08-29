@@ -56,7 +56,16 @@ Each step names the route that serves it.
    plan halted itself on the contract rule, and the balance is sitting in the
    vault waiting to be withdrawn.
 
-7. **`/`** The landing page carries the closing frame: the problem sentence, the
+7. **`/console`** Scroll to the queue strip under the pre-write checks on the
+   vault card. It names the next windows the vault will enter, up to four of
+   them, each with the lifecycle state market discovery read for that id. On the
+   chain path those states come from `@somnia-chain/markets-sdk` `loadMarkets()`
+   filtered by `isBinaryMarket()`. Nothing is clicked and nothing is signed: the
+   strip is showing what the vault does next, on its own. An id the markets
+   module has not resolved says exactly that, and a queue the vault is holding
+   privately says that instead of showing an invented id.
+
+8. **`/`** The landing page carries the closing frame: the problem sentence, the
    three step explanation, and what Perennis is not.
 
 ## The demo clock
@@ -73,9 +82,14 @@ check.
 | Step | Depends on |
 | --- | --- |
 | 1 | `StandingPlanConsole` plan builder, `planDefaults` |
-| 2 | `EventWindow` data through the adapter, `entryPriceCents()` |
+| 2 | `EventWindow` data through the adapter, which comes from `discoverEventWindows()` in `lib/markets.ts`, and `entryPriceCents()` |
 | 3 | `preflight()` in `lib/vault.ts`, collateral decimals from the adapter |
 | 4 | `settleAndRoll()` in `lib/vault.ts`, the countdown effect |
 | 5 | `explorerTxUrl()` and the `trigger: "reactivity"` field on `RollEntry` |
 | 6 | Vault 03 seeded as `STOPPED` on `consecutive-losses` |
-| 7 | `app/page.tsx` |
+| 7 | `QueueStrip` in `components/standing-plan-console.tsx`, `discoverEventWindows()` in `lib/markets.ts` |
+| 8 | `app/page.tsx` |
+
+Steps 1 to 6 keep the numbers they were given in Phase 1. `HANDOFF.md` sections
+7 and 8 refer to them by number, so step 7 was inserted at the end and the
+landing page step moved to 8 rather than renumbering the walk.

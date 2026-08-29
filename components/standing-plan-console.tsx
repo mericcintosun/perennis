@@ -406,7 +406,9 @@ export function StandingPlanConsole({
           <CardContent className="space-y-5">
             {active.status === "IDLE" ? (
               <>
-                <div className="grid grid-cols-2 gap-3">
+                {/* Two number fields side by side leave each label about 120px
+                    at 360px, so they stack below sm and pair from there up. */}
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <NumberField
                     label="Deposit (USDso)"
                     value={form.deposit}
@@ -455,7 +457,10 @@ export function StandingPlanConsole({
                   <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Stop rules, enforced by the contract
                   </p>
-                  <div className="grid grid-cols-3 gap-3">
+                  {/* "Losses in a row" and "Take profit (USDso)" are unreadable
+                      in a third of a 360px card, so the three stop rule fields
+                      stack below sm. */}
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     <NumberField
                       label="Windows"
                       value={form.windows}
@@ -592,7 +597,12 @@ export function StandingPlanConsole({
             <CardHeader className="flex-row items-start justify-between gap-4 space-y-0">
               <div className="space-y-1.5">
                 <CardTitle className="text-base">{active.label}</CardTitle>
-                <CardDescription className="font-mono text-xs">
+                {/* Shortened to fit a 360px card, with the whole address on the
+                    title so it can still be read and copied. */}
+                <CardDescription
+                  className="truncate font-mono text-xs"
+                  title={active.address}
+                >
                   {shortHash(active.address, 10)}
                 </CardDescription>
               </div>
@@ -634,7 +644,10 @@ export function StandingPlanConsole({
                       {openWindow.durationMinutes} min window
                     </Badge>
                   </div>
-                  <div className="mt-3 grid grid-cols-3 gap-4 text-sm">
+                  {/* Entry price, implied probability and book depth: three
+                      figures with a caption each, so two up below sm and three
+                      up from there. */}
+                  <div className="mt-3 grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
                     <Stat
                       label="Entry price"
                       value={`${entryPriceCents(openWindow, active.plan?.direction ?? "UP")}c`}
@@ -685,6 +698,8 @@ export function StandingPlanConsole({
                   ))}
                 </div>
               </div>
+
+              <QueueStrip vault={active} windows={windows} source={source} />
 
               {/* This line counts plan signatures only. The deposit is its own
                   step in DEMO.md (an approve when the allowance is short, then
@@ -791,6 +806,7 @@ export function StandingPlanConsole({
                           <a
                             className="font-mono underline underline-offset-4 hover:text-foreground"
                             href={`${explorerBase}/tx/${entry.txHash}`}
+                            title={entry.txHash}
                             target="_blank"
                             rel="noreferrer"
                           >
@@ -841,6 +857,110 @@ export function VaultEmptyState({ vault }: { vault: Vault }) {
             : "The balance stays in the vault. Withdraw it, or write a new plan when you want to start again."}
         </p>
       </div>
+    </div>
+  );
+}
+
+/**
+ * The queue strip, DEMO.md step 7.
+ *
+ * The market ids the vault will enter next, each one carrying the lifecycle
+ * state market discovery read for it. It needs no fetch, no route and no
+ * signature: `windows` is the list discoverEventWindows() in lib/markets.ts
+ * produced for this render, and `vault.queue` is what the contract holds. Delete
+ * lib/markets.ts and every row below loses its state.
+ *
+ * Three states, like every other element on this screen. Empty when the queue is
+ * dry, normal when it is not, and a caveat line when the ids came from fixtures
+ * rather than from the chain.
+ *
+ * Two honest labels instead of one invented state:
+ *   - an empty id is the chain path. `_queue` is private on PerennisVault, so
+ *     snapshot() reports the pending count and not the ids in it
+ *   - an id with no matching window is one the markets module has not resolved
+ */
+export function QueueStrip({
+  vault,
+  windows,
+  source,
+}: {
+  vault: Vault;
+  windows: EventWindow[];
+  source: DataSourceLabel;
+}) {
+  const shown = vault.queue.slice(0, 4);
+  const hidden = vault.queue.length - shown.length;
+
+  return (
+    <div>
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Next in the queue
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {source === "chain"
+            ? "States read live through the DreamDEX markets SDK"
+            : "States from the fixture window set"}
+        </p>
+      </div>
+
+      {shown.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-border px-4 py-6 text-center">
+          <p className="text-sm font-medium">The queue is dry</p>
+          <p className="mx-auto mt-1 max-w-[52ch] text-sm text-muted-foreground">
+            Arm 3 more windows and the vault refills it, permissionlessly. Any
+            wallet can send that call, and none of them can move the money.
+          </p>
+        </div>
+      ) : (
+        <>
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {shown.map((marketId, i) => {
+              // Named `match` and not `window`: this is a client component and
+              // shadowing the global there is a trap for the next reader.
+              const match = windows.find((w) => w.marketId === marketId);
+              const known = marketId.length > 0;
+              return (
+                <li
+                  key={`${marketId}-${i}`}
+                  className="flex items-start gap-2.5 rounded-md border border-border bg-secondary/30 px-3 py-2"
+                >
+                  <span className="tabular mt-0.5 shrink-0 text-xs font-semibold text-primary">
+                    {i + 1}
+                  </span>
+                  <div className="min-w-0">
+                    <p
+                      className="truncate font-mono text-xs"
+                      title={known ? marketId : undefined}
+                    >
+                      {known ? shortHash(marketId, 8) : "id held by the vault"}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {match
+                        ? `${match.asset} · ${match.durationMinutes} min · ${match.state}`
+                        : known
+                          ? "Not resolved by the markets module yet"
+                          : "Queued on chain, snapshot() reports the count and not the id"}
+                    </p>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+          {hidden > 0 ? (
+            <p className="mt-2 text-xs text-muted-foreground">
+              {hidden} more window{hidden === 1 ? "" : "s"} armed behind these.
+            </p>
+          ) : null}
+        </>
+      )}
+
+      {source === "seed" ? (
+        <p className="mt-2 text-xs text-muted-foreground">
+          Seed data: these ids come from fixtures/event-windows.json. With
+          NEXT_PUBLIC_BINARY_MARKETS_MODULE set they come from loadMarkets().
+        </p>
+      ) : null}
     </div>
   );
 }

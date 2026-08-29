@@ -42,7 +42,7 @@ export function ConsoleSkeleton() {
         <div className="space-y-4 rounded-xl border border-border bg-card p-6 lg:col-span-2">
           <Block className="h-5 w-32" />
           <Block className="h-4 w-full" />
-          <div className="grid grid-cols-2 gap-3 pt-2">
+          <div className="grid grid-cols-1 gap-3 pt-2 sm:grid-cols-2">
             <Block className="h-10" />
             <Block className="h-10" />
             <Block className="h-10" />
@@ -54,9 +54,11 @@ export function ConsoleSkeleton() {
 
         <div className="space-y-6 lg:col-span-3">
           <div className="space-y-6 rounded-xl border border-border bg-card p-6">
-            <div className="flex items-center gap-8">
+            <div className="flex flex-wrap items-center gap-8">
               <Block className="size-[104px] shrink-0 rounded-full" />
-              <div className="grid flex-1 grid-cols-3 gap-6">
+              {/* Same breakpoints as the real stat row, so nothing jumps when
+                  the console lands. */}
+              <div className="grid flex-1 grid-cols-2 gap-6 sm:grid-cols-3">
                 <Block className="h-14" />
                 <Block className="h-14" />
                 <Block className="h-14" />
@@ -68,6 +70,14 @@ export function ConsoleSkeleton() {
               <Block className="h-12" />
               <Block className="h-12" />
               <Block className="h-12" />
+            </div>
+            {/* The queue strip, DEMO.md step 7. */}
+            <div className="space-y-2">
+              <Block className="h-3 w-32" />
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Block className="h-11" />
+                <Block className="h-11" />
+              </div>
             </div>
           </div>
 
