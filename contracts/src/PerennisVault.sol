@@ -75,6 +75,16 @@ contract PerennisVault is ISomniaEventHandler {
     /// under 400,000, so this leaves generous headroom without overpaying.
     uint256 constant HANDLER_GAS_LIMIT = 1_000_000;
 
+    /// Window ids a single armNext or startPlan call may push. armNext is
+    /// permissionless, so without a cap anyone could hand it a million element
+    /// array and burn the caller's gas writing storage the plan will never use.
+    uint256 constant MAX_QUEUE_ADD = 8;
+
+    /// Ceiling on the whole pending queue. A plan runs at most `windows` rounds
+    /// and the demo arms three at a time, so 32 is far more than any real plan
+    /// needs and still bounds the storage anyone can make this contract hold.
+    uint256 constant MAX_PENDING = 32;
+
     // --- types -----------------------------------------------------------
 
     enum Status { Idle, Active, Stopped, Completed }
@@ -119,6 +129,10 @@ contract PerennisVault is ISomniaEventHandler {
     uint256 private _queueHead;
     Roll[] private _rolls;
 
+    /// Reentrancy flag. Set for the duration of deposit, withdraw and _onEvent,
+    /// the three entry points that hand control to an external contract.
+    bool private locked;
+
     // --- events ----------------------------------------------------------
 
     event Deposited(uint256 amount, uint256 balance);
@@ -141,10 +155,25 @@ contract PerennisVault is ISomniaEventHandler {
     error NotReactivity();
     error BadPlan();
     error InsufficientBalance();
+    error QueueFull();
+    error Reentrant();
 
     modifier onlyOwner() {
         if (msg.sender != owner) revert NotOwner();
         _;
+    }
+
+    /**
+     * The collateral token is external code. A token with a transfer hook could
+     * call back into this contract mid transfer, so the three functions that
+     * move money or settle a window take this lock. It is a revert and not a
+     * silent return: a reentrant call is never a business condition.
+     */
+    modifier noReentry() {
+        if (locked) revert Reentrant();
+        locked = true;
+        _;
+        locked = false;
     }
 
     constructor(address collateral_, address markets_) {
@@ -156,15 +185,25 @@ contract PerennisVault is ISomniaEventHandler {
 
     // --- collateral ------------------------------------------------------
 
-    function deposit(uint256 amount) external {
+    /**
+     * The single documented exception to checks, effects, interactions in this
+     * contract. The tokens have to arrive before there is anything to credit,
+     * so the transfer comes first by necessity. Two things make that safe: the
+     * noReentry lock is held for the whole call, and the credit is the measured
+     * balance delta rather than the requested amount, so a fee on transfer or
+     * rebasing token credits what actually landed and not what was asked for.
+     */
+    function deposit(uint256 amount) external noReentry {
+        uint256 heldBefore = collateral.balanceOf(address(this));
         require(collateral.transferFrom(msg.sender, address(this), amount), "transfer failed");
-        balance += amount;
-        emit Deposited(amount, balance);
+        uint256 received = collateral.balanceOf(address(this)) - heldBefore;
+        balance += received;
+        emit Deposited(received, balance);
     }
 
     /// Idle collateral only. Anything sitting in an open position stays put
-    /// until that window settles.
-    function withdraw(uint256 amount) external onlyOwner {
+    /// until that window settles. Checks, then effects, then the interaction.
+    function withdraw(uint256 amount) external onlyOwner noReentry {
         if (amount > balance) revert InsufficientBalance();
         balance -= amount;
         require(collateral.transfer(owner, amount), "transfer failed");
@@ -186,6 +225,7 @@ contract PerennisVault is ISomniaEventHandler {
         if (p.maxConsecutiveLosses == 0) revert BadPlan();
         if (p.takeProfit <= p.floorBalance) revert BadPlan();
         if (balance < p.stakePerWindow) revert InsufficientBalance();
+        if (windowIds.length > MAX_QUEUE_ADD) revert QueueFull();
 
         plan = p;
         status = Status.Active;
@@ -214,8 +254,15 @@ contract PerennisVault is ISomniaEventHandler {
      * Permissionless. The next window's market may not exist yet when the plan
      * is written, so anyone can top the queue back up: a friend, a cron, the
      * frontend on page load. Nobody can change the plan or move the money.
+     *
+     * Because it is permissionless, both the per call size and the total queue
+     * are capped. Without them a stranger could push storage into this contract
+     * until the queue was too expensive to read.
      */
     function armNext(bytes32[] calldata windowIds) external {
+        if (windowIds.length > MAX_QUEUE_ADD) revert QueueFull();
+        if (pendingWindows() + windowIds.length > MAX_PENDING) revert QueueFull();
+
         for (uint256 i = 0; i < windowIds.length; i++) {
             _queue.push(windowIds[i]);
         }
@@ -235,13 +282,22 @@ contract PerennisVault is ISomniaEventHandler {
      * reverts on a business condition: a revert here would strand the position
      * until someone noticed, so every failure path emits and returns instead.
      */
-    function _onEvent(address emitter, bytes32[] calldata topics, bytes calldata data) external {
+    function _onEvent(address emitter, bytes32[] calldata topics, bytes calldata data)
+        external
+        noReentry
+    {
         if (msg.sender != address(REACTIVITY)) revert NotReactivity();
         if (emitter != address(markets)) return;
         if (topics.length < 2 || topics[0] != MARKET_RESOLVED) return;
 
         bytes32 marketId = topics[1];
         if (marketId != openMarketId || status != Status.Active) return;
+
+        // A payload shorter than one word cannot hold a uint8, and abi.decode
+        // would revert on it. Returning instead keeps the promise that this
+        // handler never reverts on a malformed payload from an emitter we did
+        // not expect, which would otherwise strand the open position.
+        if (data.length < 32) return;
 
         uint8 winningSide = abi.decode(data, (uint8));
         _settleAndRoll(marketId, winningSide);
@@ -323,6 +379,10 @@ contract PerennisVault is ISomniaEventHandler {
 
         try markets.buy(next, plan.direction, stake) {
             openMarketId = next;
+            // Reset on the success path too, not only in the catch. A module
+            // that spends less than the full allowance would otherwise leave a
+            // standing approval on this vault between windows.
+            collateral.approve(address(markets), 0);
             emit PositionOpened(next, plan.direction, stake);
         } catch {
             // Book was too thin or the market locked mid block. Give the stake
