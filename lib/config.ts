@@ -81,3 +81,27 @@ export const MAX_LEDGER_ROWS = 12;
 
 /** Window ids a single armNext call may push. Mirrors MAX_QUEUE_ADD in the contract. */
 export const MAX_QUEUE_ADD = 8;
+
+// --- the write path ------------------------------------------------------
+
+/**
+ * Native STT carried by the startPlan transaction, as a decimal string parsed
+ * with parseEther at call time. startPlan is payable and the subscription is
+ * funded out of msg.value, because the owner is billed for every handler run: a
+ * plan sent with no value opens a subscription that cannot pay for a roll.
+ *
+ * A string rather than a number on purpose. 0.05 has no exact float
+ * representation, and parseEther on the string is exact.
+ */
+export const SUBSCRIPTION_FUNDING_STT =
+  process.env.NEXT_PUBLIC_SUBSCRIPTION_FUNDING_STT ?? "0.05";
+
+/**
+ * Confirmations waited for before a transaction is reported as confirmed.
+ * Shannon produces blocks fast, so one is enough for a demo and keeps the wow
+ * moment inside its five second budget. Raise it if you are recording against a
+ * chain that reorganises.
+ */
+export const TX_CONFIRMATIONS = Number(
+  process.env.NEXT_PUBLIC_TX_CONFIRMATIONS ?? 1
+);
