@@ -13,9 +13,16 @@ import {
   fetchRollLedger,
   fetchVaults,
 } from "@/lib/dreamdex";
+import { discoverEventWindows } from "@/lib/markets";
 import { COLLATERAL_TOKEN } from "@/lib/config";
 import { coreFailure, failureNote } from "@/lib/errors";
-import type { ApiResponse, EventWindow, RollEntry, Vault } from "@/lib/types";
+import type {
+  ApiResponse,
+  EventWindow,
+  MarketDiscovery,
+  RollEntry,
+  Vault,
+} from "@/lib/types";
 import type { PerennisAdapter } from "./types";
 
 export const chainAdapter: PerennisAdapter = {
@@ -45,5 +52,16 @@ export const chainAdapter: PerennisAdapter = {
 
   async getRollLedger(): Promise<ApiResponse<RollEntry[]>> {
     return fetchRollLedger();
+  },
+
+  // Straight from lib/markets.ts, so the health probe reports the level that
+  // actually answered rather than the level this deployment asked for.
+  async getMarketDiscovery(): Promise<ApiResponse<MarketDiscovery>> {
+    const { response, via, sdkResolved } = await discoverEventWindows();
+    return {
+      source: response.source,
+      data: { via, windowCount: response.data.length, sdkResolved },
+      ...(response.note ? { note: response.note } : {}),
+    };
   },
 };

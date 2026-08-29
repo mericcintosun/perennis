@@ -12,7 +12,8 @@
 //   1. No process.env read lives here. Every address, endpoint and constant
 //      comes from lib/config.ts.
 //   2. Every outbound call goes through withTimeoutAndRetry(). There is exactly
-//      one retry loop on the core path and it is in this file.
+//      one retry loop on the core path and it lives in lib/rpc.ts, which this
+//      file and lib/markets.ts both import and this file re-exports.
 //   3. Nothing throws out of this module. A failure returns
 //      { source: "seed", data: <fixtures>, note } built from a CoreFailure, so
 //      the console shows the seed badge and a reason instead of an error page.
@@ -32,7 +33,6 @@
 // if a signature is wrong the call reverts, this module catches it and falls back
 // to seed data, and the console shows the "seed data" badge instead of crashing.
 
-import { createPublicClient, http, defineChain } from "viem";
 import {
   binaryMarketsAbi,
   erc20Abi,
@@ -40,40 +40,31 @@ import {
   rollSettledEvent,
 } from "@/lib/abi";
 import {
-  BINARY_MARKETS_MODULE,
-  CHAIN_ID,
   COLLATERAL_TOKEN,
-  EXPLORER_URL,
   LEDGER_LOOKBACK_BLOCKS,
   MAX_LEDGER_ROWS,
-  RPC_RETRY_COUNT,
-  RPC_TIMEOUT_MS,
-  RPC_URL,
   VAULT_ADDRESS,
 } from "./config";
 import { classify, coreFailure, failureNote } from "./errors";
 import { logCore } from "./log";
+import { discoverEventWindows, toBytes32 } from "./markets";
+import { publicClient, somniaShannon, withTimeoutAndRetry } from "./rpc";
 import { eventWindows, vaults } from "./data/seed";
 import type {
   ApiResponse,
   Asset,
   Direction,
   EventWindow,
-  MarketState,
   Plan,
   RollEntry,
   Vault,
 } from "./types";
 
-export const somniaShannon = defineChain({
-  id: CHAIN_ID,
-  name: "Somnia Shannon Testnet",
-  nativeCurrency: { name: "Somnia Test Token", symbol: "STT", decimals: 18 },
-  rpcUrls: { default: { http: [RPC_URL] } },
-  blockExplorers: {
-    default: { name: "Shannon Explorer", url: EXPLORER_URL },
-  },
-});
+// The Shannon client and the one retry loop moved to lib/rpc.ts in Phase 4, so
+// lib/markets.ts can use them without importing this module (which would make
+// the two circular). They are re-exported here, along with toBytes32, so every
+// importer written before that keeps resolving them from this file.
+export { somniaShannon, toBytes32, withTimeoutAndRetry };
 
 export function explorerTxUrl(txHash: string) {
   return `${somniaShannon.blockExplorers.default.url}/tx/${txHash}`;
@@ -83,73 +74,14 @@ export function explorerAddressUrl(address: string) {
   return `${somniaShannon.blockExplorers.default.url}/address/${address}`;
 }
 
-function publicClient() {
-  return createPublicClient({ chain: somniaShannon, transport: http() });
-}
-
-// --- the one retry loop --------------------------------------------------
-
-/**
- * The single outbound call wrapper for this whole module. Every read below goes
- * through it and no other retry loop exists on the core path, so the worst case
- * latency of any one read is bounded at
- * RPC_TIMEOUT_MS * (RPC_RETRY_COUNT + 1) and can be reasoned about from
- * lib/config.ts alone.
- *
- * A timeout is surfaced as an Error named TimeoutError so lib/errors.ts can
- * classify it without reading the message text.
- */
-export async function withTimeoutAndRetry<T>(
-  run: () => Promise<T>
-): Promise<T> {
-  let lastError: unknown = new Error("rpc call never ran");
-
-  for (let attempt = 0; attempt <= RPC_RETRY_COUNT; attempt += 1) {
-    try {
-      return await raceTimeout(run());
-    } catch (error) {
-      lastError = error;
-    }
-  }
-
-  throw lastError;
-}
-
-function raceTimeout<T>(work: Promise<T>): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => {
-      const timeout = new Error("rpc call exceeded the core timeout");
-      timeout.name = "TimeoutError";
-      reject(timeout);
-    }, RPC_TIMEOUT_MS);
-
-    work.then(
-      (value) => {
-        clearTimeout(timer);
-        resolve(value);
-      },
-      (error) => {
-        clearTimeout(timer);
-        reject(error);
-      }
-    );
-  });
-}
-
 // --- ABIs ----------------------------------------------------------------
 
 // Defined in lib/abi.ts, which imports nothing, and re-exported here so the
 // importers written before Phase 3 keep resolving them from this module.
 export { binaryMarketsAbi, erc20Abi, perennisVaultAbi, rollSettledEvent };
 
-/** Lifecycle codes from the DreamDEX docs: only state 1 accepts orders. */
-const marketStateByCode: Record<number, MarketState> = {
-  0: "Listed",
-  1: "Trading",
-  2: "Locked",
-  4: "Resolved",
-  5: "Voided",
-};
+// The lifecycle code table moved to lib/markets.ts with the per id read that
+// uses it, so there is one place that turns a market state code into a label.
 
 const ZERO_BYTES32 =
   "0x0000000000000000000000000000000000000000000000000000000000000000";
@@ -159,62 +91,18 @@ const ZERO_BYTES32 =
 /**
  * The window queue the plan builder writes into the vault.
  *
- * Chain path: read the live lifecycle state of each known market id from the
- * BinaryMarketsModule and overlay it on the local window metadata.
- * TODO: swap the per-id loop for @somnia-chain/markets-sdk loadMarkets() +
- * isBinaryMarket() once the SDK is wired, so discovery stops needing a hardcoded
- * id list and the book comes from fetchOrderBook().
+ * A thin wrapper over discoverEventWindows() in lib/markets.ts, which owns the
+ * three level fallback: the sponsor SDK first, then the per id getMarket read
+ * that used to live in this function, then the fixtures. Each level that does
+ * not answer attaches a note written by us, so a fixture list never renders
+ * under a chain badge without saying why.
+ *
+ * This function keeps its name and its return shape because both adapters, both
+ * API routes and DEMO.md step 2 are written against them.
  */
 export async function fetchEventWindows(): Promise<ApiResponse<EventWindow[]>> {
-  if (!BINARY_MARKETS_MODULE) {
-    return {
-      source: "seed",
-      data: eventWindows,
-      note: failureNote(
-        coreFailure(
-          "not-configured",
-          "No binary markets module address is set, so window states come from the fixtures."
-        )
-      ),
-    };
-  }
-
-  try {
-    const client = publicClient();
-    // Bound to a local const first: the guard above narrows the import, but that
-    // narrowing does not survive into the callback below, so viem would see the
-    // address as possibly undefined.
-    const address = BINARY_MARKETS_MODULE;
-    // Shannon has no multicall3 deployment we rely on, so these go out as plain
-    // eth_call batches. Twelve windows is well inside a single RPC round trip.
-    const results = await Promise.allSettled(
-      eventWindows.map((w) =>
-        withTimeoutAndRetry(() =>
-          client.readContract({
-            address,
-            abi: binaryMarketsAbi,
-            functionName: "getMarket",
-            args: [toBytes32(w.marketId)],
-          })
-        )
-      )
-    );
-
-    const data = eventWindows.map((w, i) => {
-      const r = results[i];
-      if (r.status !== "fulfilled") return w;
-      const [stateCode, lockTime] = r.value;
-      return {
-        ...w,
-        state: marketStateByCode[Number(stateCode)] ?? w.state,
-        locksAt: new Date(Number(lockTime) * 1000).toISOString(),
-      };
-    });
-
-    return { source: "chain", data };
-  } catch (error) {
-    return seedFallback(eventWindows, "market states read", error);
-  }
+  const { response } = await discoverEventWindows();
+  return response;
 }
 
 /**
@@ -558,15 +446,11 @@ function seedFallback<T>(data: T, step: string, error: unknown): ApiResponse<T> 
   return { source: "seed", data, note: failureNote(coreFailure(code, hint)) };
 }
 
-/**
- * Seed market ids are written in the shortened form the DreamDEX UI displays.
- * Right padding gets them to a well formed bytes32 for the call. Once market
- * discovery comes from loadMarkets() the ids arrive full length and this stops
- * doing anything.
- */
-function toBytes32(id: string): `0x${string}` {
-  return `0x${id.replace(/^0x/, "").padEnd(64, "0")}` as `0x${string}`;
-}
+// toBytes32() is defined in lib/markets.ts now, next to the per id read that
+// needs it, and is re-exported at the top of this file. It still serves the
+// fallback path: fixture ids are the shortened form the DreamDEX UI displays and
+// have to be right padded, while ids arriving full length from the SDK are
+// already 64 hex characters and pass through unchanged.
 
 /** The fixture window a chain market id corresponds to, when there is one. */
 function windowFor(marketId: string): EventWindow | undefined {

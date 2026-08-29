@@ -8,11 +8,13 @@
 //
 // rollLedgerSource is the field that answers the Phase 2 question: did the roll
 // ledger actually come off the chain, or is the console still showing fixtures?
+// marketDiscovery answers the Phase 4 one: did the window list come from the
+// DreamDEX markets SDK, from the per id market read, or from the fixtures?
 
 import { NextResponse } from "next/server";
 import { adapterMode, getAdapter, vaultAddressSet } from "@/lib/adapters";
 import { CHAIN_ID, REACTIVITY_PRECOMPILE } from "@/lib/config";
-import type { ApiResponse, DataSource } from "@/lib/types";
+import type { ApiResponse, DataSource, MarketDiscovery } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -25,16 +27,23 @@ interface Health {
   reactivityPrecompile: string;
   /** "chain" once RollSettled logs are being read, "seed" while on fixtures. */
   rollLedgerSource: DataSource;
+  /**
+   * Which level of lib/markets.ts answered the window read, how many windows it
+   * produced, and whether the markets SDK loaded at all. A path name and two
+   * counts: no address, no endpoint, no key.
+   */
+  marketDiscovery: MarketDiscovery;
 }
 
 export async function GET() {
   const adapter = getAdapter();
-  const [decimals, ledger] = await Promise.all([
+  const [decimals, ledger, discovery] = await Promise.all([
     adapter.getCollateralDecimals(),
     adapter.getRollLedger(),
+    adapter.getMarketDiscovery(),
   ]);
 
-  const note = ledger.note ?? decimals.note;
+  const note = ledger.note ?? decimals.note ?? discovery.note;
 
   const body: ApiResponse<Health> = {
     source: decimals.source,
@@ -45,6 +54,7 @@ export async function GET() {
       vaultAddressSet: vaultAddressSet(),
       reactivityPrecompile: REACTIVITY_PRECOMPILE,
       rollLedgerSource: ledger.source,
+      marketDiscovery: discovery.data,
     },
     ...(note ? { note } : {}),
   };

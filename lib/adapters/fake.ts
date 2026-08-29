@@ -5,7 +5,13 @@
 // checkout with an empty .env.local runs the whole demo path off this file.
 
 import { eventWindows, vaults } from "@/lib/data/seed";
-import type { ApiResponse, EventWindow, RollEntry, Vault } from "@/lib/types";
+import type {
+  ApiResponse,
+  EventWindow,
+  MarketDiscovery,
+  RollEntry,
+  Vault,
+} from "@/lib/types";
 import type { PerennisAdapter } from "./types";
 
 /** tUSDC on Shannon is 6 decimals. The chain adapter reads it off the token. */
@@ -37,6 +43,15 @@ export function createFakeAdapter(note?: string): PerennisAdapter {
     // one the chain adapter replaces with the deployed vault.
     async getRollLedger(): Promise<ApiResponse<RollEntry[]>> {
       return wrap(vaults[1].ledger);
+    },
+    // No SDK call is made on this path and none is claimed. The fixtures are the
+    // seed level of lib/markets.ts, reported as exactly that.
+    async getMarketDiscovery(): Promise<ApiResponse<MarketDiscovery>> {
+      return wrap({
+        via: "seed",
+        windowCount: eventWindows.length,
+        sdkResolved: false,
+      });
     },
   };
 }

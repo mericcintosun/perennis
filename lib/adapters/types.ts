@@ -9,7 +9,13 @@
 // from fixtures/*.json with no viem import, lib/adapters/chain.ts answers from
 // lib/dreamdex.ts. Adding a method here means adding it to both.
 
-import type { ApiResponse, EventWindow, RollEntry, Vault } from "@/lib/types";
+import type {
+  ApiResponse,
+  EventWindow,
+  MarketDiscovery,
+  RollEntry,
+  Vault,
+} from "@/lib/types";
 
 export interface PerennisAdapter {
   getEventWindows(): Promise<ApiResponse<EventWindow[]>>;
@@ -21,6 +27,13 @@ export interface PerennisAdapter {
    * transaction hash the Shannon explorer will open.
    */
   getRollLedger(): Promise<ApiResponse<RollEntry[]>>;
+  /**
+   * How the window list above was found: the sponsor SDK, the per id market
+   * read, or the fixtures. Phase 4 added it so GET /api/health can answer the
+   * discovery question the way rollLedgerSource answers the ledger one. It
+   * reveals a path name and a count, never an address and never a key.
+   */
+  getMarketDiscovery(): Promise<ApiResponse<MarketDiscovery>>;
 }
 
 /** Accepted values of ADAPTER_MODE. Anything else is treated as "fake". */

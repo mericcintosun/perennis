@@ -44,6 +44,26 @@ export interface EventWindow {
   bookDepthUsd: number;
 }
 
+/**
+ * Which level of lib/markets.ts answered the window read.
+ *
+ *   "sdk"         @somnia-chain/markets-sdk loadMarkets() plus isBinaryMarket()
+ *   "market-ids"  the per id getMarket(bytes32) overlay on the fixture ids
+ *   "seed"        fixtures/event-windows.json
+ *
+ * Reported by GET /api/health so a deployment can say which one it is on
+ * without anyone reading a log.
+ */
+export type MarketDiscoveryPath = "sdk" | "market-ids" | "seed";
+
+export interface MarketDiscovery {
+  via: MarketDiscoveryPath;
+  /** Windows the level that answered produced. */
+  windowCount: number;
+  /** True when the SDK package loaded and exposed both functions this app calls. */
+  sdkResolved: boolean;
+}
+
 export type RollOutcome = "WON" | "LOST" | "VOIDED";
 
 export interface RollEntry {

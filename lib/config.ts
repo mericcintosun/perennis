@@ -53,6 +53,29 @@ export const COLLATERAL_TOKEN = optionalAddress(
   process.env.NEXT_PUBLIC_COLLATERAL_TOKEN
 );
 
+// --- market discovery ----------------------------------------------------
+
+/**
+ * Which level of lib/markets.ts discovery to start at.
+ *
+ * "sdk" is the default and the one the demo runs on: @somnia-chain/markets-sdk
+ * loadMarkets() filtered by isBinaryMarket(), falling through to the per id
+ * getMarket read and then to the fixtures on its own. "market-ids" skips the SDK
+ * and starts at the per id read. "seed" pins the console to the fixtures, which
+ * is what you want when recording without a network.
+ *
+ * The union is written out here rather than imported, because this file imports
+ * nothing. lib/types.ts declares the same three strings as MarketDiscoveryPath.
+ * Anything unrecognised is treated as "sdk", the same way a misspelled
+ * ADAPTER_MODE gives a working console rather than a blank page.
+ */
+export const MARKET_DISCOVERY: "sdk" | "market-ids" | "seed" =
+  process.env.NEXT_PUBLIC_MARKET_DISCOVERY === "market-ids"
+    ? "market-ids"
+    : process.env.NEXT_PUBLIC_MARKET_DISCOVERY === "seed"
+      ? "seed"
+      : "sdk";
+
 /**
  * Somnia reactivity precompile. Fixed by the protocol at 0x0100, so it is a
  * constant here rather than an env key. The same address is hardcoded in
