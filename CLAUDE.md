@@ -10,6 +10,7 @@ npm install            # install dependencies
 npm run dev            # local dev server on http://localhost:3000
 npm run build          # must stay green after every change
 npm run seed           # validates fixtures and rewrites fixtures/seed-manifest.json
+npm run demo:reset     # re-verifies fixtures, prints the chain reset commands
 npm run test:contracts # cd contracts && forge test
 ```
 
@@ -44,8 +45,22 @@ logger, `lib/schemas.ts` the zod edge validation. Only two files in the repo rea
 - Anything with `useState`, `useEffect` or an event handler needs `"use client"`
   at the top of the file.
 - `useSearchParams` only works under a `Suspense` boundary.
-- Keep `viem` off the client bundle. Pure helpers belong in `lib/vault.ts`, chain
-  reads in `lib/dreamdex.ts`, and `lib/adapters/fake.ts` imports neither.
+- Keep `viem` off the client bundle, with the two named exceptions below. Pure
+  helpers belong in `lib/vault.ts`, chain reads in `lib/dreamdex.ts`, and
+  `lib/adapters/fake.ts` imports neither.
+
+### Fence lift, Phase 3 only, now spent
+
+A write path needs an encoder, so Phase 3 was granted a named exception to the
+viem rule above for exactly two client reachable modules:
+
+1. `lib/abi.ts`, which holds every ABI and imports nothing at all
+2. `lib/tx.ts`, the write client, which imports viem, `lib/abi.ts`,
+   `lib/config.ts`, `lib/errors.ts` and `lib/wallet-state.ts` and nothing else
+
+`lib/dreamdex.ts` stays server only and no file under `app/` or `components/`
+imports it. The lift is closed again: a third client file reaching for viem is
+off limits, and anything new on the write path goes through `lib/tx.ts`.
 
 ## Never touch
 
@@ -75,8 +90,10 @@ anything beyond those four is off limits.
 
 ## Vercel guardrails
 
-- No runtime filesystem writes in app code. `scripts/seed.mjs` writing a fixture
-  at build time is fine, a request time write is not.
+- No runtime filesystem writes in app code. `scripts/seed.mjs` and
+  `scripts/demo-reset.mjs` writing `fixtures/seed-manifest.json` from the command
+  line is fine, a request time write is not. Those two files are the only place
+  `fs` appears in the repo.
 - `useSearchParams` only under a `Suspense` boundary.
 - No Node only APIs in edge paths, no custom server, no `output: export`,
   standard Next build only.

@@ -140,6 +140,11 @@ public/
 - `lib/vault.ts` is the whole roll and stop rule engine, used by the live UI.
 - The console is fully interactive: writing a plan, arming windows, halting,
   withdrawing, and the countdown driven roll all change real state.
+- `lib/tx.ts` is the write path. With `NEXT_PUBLIC_CONTRACT_ADDRESS` set and a
+  wallet connected on chain 50312, the plan button sends approve, deposit and
+  one `startPlan`, and "Arm 3 more windows", "Halt the plan" and the withdraw
+  button send `armNext`, `halt` and `withdraw`. Every one of them falls back to
+  the local state update in the same function when either half is missing.
 
 **What is mocked, by exact function name:**
 
@@ -168,6 +173,9 @@ public/
 - `@somnia-chain/markets-sdk` is deliberately not in package.json yet. Add it
   when you wire live market discovery and order submission, and pin the version
   you actually install.
+- The window queue written by `startPlan` still comes from
+  `fixtures/event-windows.json` ids padded to bytes32 by `toBytes32()` in
+  `lib/tx.ts`. Real market ids arrive with the markets SDK in Phase 4.
 
 ---
 
@@ -608,3 +616,194 @@ console and all four API routes off Shannon with no page file touched, and
 `deposit`, `startPlan`, `armNext`, `halt` and `withdraw` still mutate local
 state in `components/standing-plan-console.tsx` instead of sending a
 transaction.
+
+---
+
+## 8. Phase 3 record, the write path and the wallet states
+
+### Goal
+
+Take the other half off local state. `DEMO.md` step 1 now runs as real
+transactions (approve when the allowance is short, deposit, then one `startPlan`
+that writes the plan, queues the windows, funds the subscription out of
+`msg.value` and enters the first window), and step 4 re-reads the chain instead
+of running the `settleAndRoll()` mirror whenever a vault address is configured.
+Steps 2, 3, 5 and 6 keep working on both paths, and the fixture path renders
+exactly what it rendered before.
+
+### Status
+
+Written, not executed. Nothing in this phase was run: no `npm install`, no
+`npm run build`, no `npm run seed`, no `forge test`, no RPC call, no
+transaction, no wallet dialog. Every command dependent claim below is
+unverified and is the runner's to check.
+
+**The mechanism that went real:** the five writes. `lib/tx.ts` encodes them with
+`encodeFunctionData`, sends them through a `createWalletClient` over
+`window.ethereum`, and waits `TX_CONFIRMATIONS` on a `createPublicClient` over
+`RPC_URL`. `components/standing-plan-console.tsx` holds one `WalletState` and
+calls `router.refresh()` on `tx-confirmed`, so the card follows the chain rather
+than a local mutation.
+
+**Still mocked, by exact function name:**
+
+- `fetchEventWindows()` in `lib/dreamdex.ts`. Market discovery is still a
+  hardcoded id list with a per id `getMarket(bytes32)` overlay. The
+  `@somnia-chain/markets-sdk` `loadMarkets()` plus `isBinaryMarket()` swap is
+  Phase 4, deferred because it is a new dependency this phase was told not to
+  add and because the console cannot install or resolve one.
+- `resolveWindow()` in `lib/vault.ts`, the deterministic draw.
+- `settleAndRoll()` in `lib/vault.ts`. Still the mirror that drives the console
+  clock, but only on the fixture path now: with `source === "chain"` the
+  countdown effect calls `router.refresh()` instead.
+- `syntheticTxHash()` in `lib/vault.ts`, reached only from `settleAndRoll()`.
+- `toBytes32()` in `lib/tx.ts`. The queue written into `startPlan` is fixture
+  market ids right padded to bytes32, so a real `startPlan` queues windows the
+  BinaryMarketsModule does not know about until Phase 4 lands real discovery.
+  The plan, the deposit, the stop rules and the subscription are all real.
+- `DEMO_WINDOW_SECONDS = 20`, the demo clock, still labelled as one on screen.
+
+### Decisions
+
+- **Persistence is row 4 of the decision table: the step's proof IS the chain.**
+  The demo's mutable state lives in `PerennisVault` on Shannon and nowhere else.
+  Two rows were considered and rejected. A mirror database (Postgres or SQLite)
+  was rejected because the whole claim of the product is that the roll happened
+  without a server, and a row in our own table proves nothing a judge would
+  accept. A KV store for the roll ledger was rejected for the same reason plus
+  a second one: Phase 2 already reads the ledger from `RollSettled` logs, so a
+  KV would be a cache in front of the only source of truth, with its own staleness
+  bug on camera. There is no database, no KV, no Postgres, and no runtime
+  filesystem write.
+- **Client side idempotency, because there is no server side write.** The
+  template's API route idempotency item does not apply: nothing on the demo path
+  posts to a route. `withIdempotency()` in `lib/tx.ts` keys in flight calls on
+  `${vaultAddress}:${functionName}:${argsHash}` and returns the first promise to
+  a second caller, and the chain nonce is the second guard. Every submit control
+  is also `disabled` on `isBusy(walletState)`, never on a timer.
+- **No new npm dependency.** `viem ^2.21.0` was already installed and is the
+  whole write path. No wagmi, no rainbowkit, no ethers, and no markets SDK. The
+  EIP-1193 surface this app needs is four methods, written out in `lib/tx.ts`
+  rather than pulled in as a library.
+- **The viem client fence lift, two files.** `CLAUDE.md` says viem stays off the
+  client bundle. A write path needs an encoder, so exactly two client reachable
+  modules may import it: `lib/abi.ts` (data literals, imports nothing) and
+  `lib/tx.ts`. `lib/dreamdex.ts` stays server only, and no file under `app/` or
+  `components/` imports it. The lift is recorded in `CLAUDE.md` and is spent.
+- **`lib/abi.ts` holds every ABI now**, and `lib/dreamdex.ts` re-exports the four
+  read ones, so every Phase 2 importer keeps working with no edit. The five write
+  entries live in a separate `perennisVaultWriteAbi` so the read array is still a
+  literal copy of what Phase 2 shipped.
+- **Decimals are never hardcoded on the write path.** Every amount goes through
+  `parseUnits` with the decimals the adapter read off the token. A constant that
+  is right on testnet misprices every order on mainnet.
+- **`startPlan` carries value.** `NEXT_PUBLIC_SUBSCRIPTION_FUNDING_STT` (default
+  `"0.05"`) is parsed with `parseEther` at call time. A string rather than a
+  number because 0.05 has no exact float representation. A plan sent with zero
+  value opens a subscription that cannot pay for a roll, which is the one failure
+  the demo cannot recover from on camera.
+- **Provider strings are never shown.** Code 4001 gets its own copy ("You closed
+  the wallet, nothing was sent."), everything else goes through `classify()` in
+  `lib/errors.ts` and gets a sentence written by us. Same rule Phase 2 set for
+  the read path.
+- **`planFormSchema` in `lib/schemas.ts` is now the single definition of a valid
+  plan.** The console's `errors` memo renders what the schema produced, and
+  nothing is encoded before `parsePlanForm()` succeeds.
+- **The scripts own the fixtures, the human owns the chain.**
+  `scripts/demo-reset.mjs` re-verifies `fixtures/*.json` and rewrites the
+  manifest, then prints the exact `cast` commands for the chain half. It sends
+  no transaction and holds no key.
+
+### Failed attempts and deviations
+
+- **`sendVaultTx` takes a second argument the spec did not name.** The spec asks
+  for `sendVaultTx(call)` returning a `WalletState`, and for a `tx-pending`
+  branch that links the hash. Those two cannot both be true with one return
+  value: the hash only exists after the broadcast, and the return only arrives
+  after the receipt. The fix is an optional `onPending` callback that fires once
+  with the `tx-pending` state. Without it the pending branch could only show a
+  spinner with nothing to link.
+- **The `Plan` tuple's `asset` field is not sent.** `PerennisVault.Plan` has six
+  fields and asset is not one of them: the asset is implied by the market ids in
+  the queue. The console still holds it in the form and the schema still parses
+  it, because the queue filter needs it.
+- **A real `startPlan` will queue fixture market ids.** `toBytes32()` pads the
+  shortened ids the fixtures carry. Until Phase 4 swaps discovery onto the
+  markets SDK, the vault's queue on chain holds ids the module does not resolve,
+  so `_enterNext` will emit `EntrySkipped` rather than `PositionOpened`. The
+  plan, the money and the subscription are all real. This is the honest state of
+  the write path and it is why Phase 4 is discovery.
+- **`npm run demo:reset` is a no-op in the ordinary case, on purpose.** The
+  fixtures are checked into git and nothing at runtime writes to them, so the
+  fixture half of a reset is a proof plus a manifest rewrite. The chain half is
+  a printed procedure and not a script action, because resetting a contract means
+  sending transactions and this repo has no reason to hold a private key.
+- **Nothing was run.** No error survived two correction attempts because no error
+  could be observed: this session had no shell.
+
+### Files changed
+
+Added: `lib/abi.ts`, `lib/wallet-state.ts`, `lib/tx.ts`,
+`components/wallet-panel.tsx`, `app/console/error.tsx`,
+`scripts/demo-reset.mjs`, `.farm-commits.json`.
+
+Changed: `lib/dreamdex.ts`, `lib/config.ts`, `lib/schemas.ts`,
+`components/standing-plan-console.tsx`, `app/console/loading.tsx`,
+`package.json`, `.env.example`, `README.md`, `CLAUDE.md`, `HANDOFF.md`.
+
+Deleted: nothing. Nothing under `contracts/`, `public/`, `app/icon.svg` or
+`app/opengraph-image.png` was touched, and there is still no third page route.
+
+### Commands the runner should run
+
+```bash
+npm install            # dependencies are unchanged, this should be a no-op
+npm run build          # must pass with zero TypeScript errors
+npm run seed           # twice, fixtures/seed-manifest.json must be identical
+npm run demo:reset     # then seed again, the manifest must still match
+npm run test:contracts # cd contracts && forge test
+```
+
+Then, before the walk: import the deployer key into the browser wallet, because
+`startPlan`, `withdraw` and `halt` are `onlyOwner`. Fund that address with STT
+on chain 50312 for gas plus `NEXT_PUBLIC_SUBSCRIPTION_FUNDING_STT`, and with
+tUSDC through `faucet(10000)` on
+`0x70a86D8842FB63C4Ad2b7cdddF530eBf1BB25d8E`. Fill `.env.local`
+(`ADAPTER_MODE=real`, `NEXT_PUBLIC_CONTRACT_ADDRESS`,
+`NEXT_PUBLIC_BINARY_MARKETS_MODULE`), check `GET /api/health`, then walk
+`DEMO.md` three times. Last, redeploy to Vercel and walk the whole path in a
+private window with `ADAPTER_MODE` unset, to confirm the fixture path still
+renders.
+
+Four wallet behaviours to check by hand, because no test covers them: connect,
+a wrong network switch, one confirmed transaction, and one deliberately
+rejected transaction. Each must land on the state the union describes.
+
+### Open questions for the human
+
+1. **`NEXT_PUBLIC_SUBSCRIPTION_FUNDING_STT` default of 0.05.** The reactivity
+   docs mention a 32 SOMI equivalent for opening a subscription and section 3A
+   of this file says the Shannon behaviour was never verified. 0.05 is a guess
+   that keeps the demo cheap. If `startPlan` reverts on funding, raise this key
+   rather than editing any code. Safe default taken: 0.05, documented in
+   `.env.example`.
+2. **The queue length written by `startPlan`.** The console sends the first three
+   window ids, matching the copy on the button and in `DEMO.md`. `MAX_QUEUE_ADD`
+   is 8. Confirm three is the number you want on camera.
+3. **`withdrawAll` sends the full idle balance.** `withdraw` is
+   `onlyOwner` and reverts above the balance, so a partial withdrawal UI would
+   need a second field. Left as a single button. Confirm that is right.
+4. **Approve amount.** The approve is for exactly the deposit, not unlimited. It
+   costs one extra dialog on a second deposit and is the safer default. Say if
+   you want an unlimited approve for the recording instead.
+
+### Next best step for Phase 4
+
+Live market discovery, section 3C. Add `@somnia-chain/markets-sdk`, pin the
+version you actually install, and replace the hardcoded id list in
+`fetchEventWindows()` with `loadMarkets()` plus `isBinaryMarket()`. That is the
+one change that makes `startPlan` queue market ids the module can resolve, which
+turns `EntrySkipped` into `PositionOpened` and closes the last gap between the
+demo and the chain. `toBytes32()` in both `lib/tx.ts` and `lib/dreamdex.ts` stops
+doing anything the moment ids arrive full length, and both can be deleted in the
+same edit. After that, the health strip against live values (section 3F).

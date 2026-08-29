@@ -99,6 +99,7 @@ deploy commands are in [contracts/README.md](contracts/README.md), including the
 ```bash
 npm run build      # must stay green
 npm run seed       # checks fixtures/*.json and rewrites fixtures/seed-manifest.json
+npm run demo:reset # re-verifies the fixtures, prints the chain reset commands
 npm run test:contracts   # cd contracts && forge test, needs Foundry installed
 ```
 
@@ -129,6 +130,42 @@ fixtures. `GET /api/rolls` returns the ledger on its own, and takes an optional
 Every read falls back rather than failing. A missing address, a timeout or a
 rejected call comes back as `source: "seed"` with a written reason in `note`,
 which the console renders as a badge. There is no error page on this path.
+
+## Running the demo against Shannon
+
+The read path works with nothing filled in. The write path needs a wallet, and
+it has to be the right wallet: `startPlan`, `withdraw` and `halt` are
+`onlyOwner` on `PerennisVault`, so the browser wallet you connect must be the
+address that deployed the contract. Import `FARM_EVM_PRIVATE_KEY` into that
+browser wallet, or redeploy the vault from the address you intend to demo with.
+`armNext` is the exception: it is permissionless, so any wallet can refill the
+queue.
+
+In order:
+
+1. Fill `.env.local`. `ADAPTER_MODE=real`, `NEXT_PUBLIC_CONTRACT_ADDRESS`,
+   `NEXT_PUBLIC_BINARY_MARKETS_MODULE`. Two more control the write path:
+   `NEXT_PUBLIC_SUBSCRIPTION_FUNDING_STT` (default `0.05`), the native STT the
+   `startPlan` transaction carries to fund the reactivity subscription, and
+   `NEXT_PUBLIC_TX_CONFIRMATIONS` (default `1`). `.env.example` says where every
+   value comes from.
+2. Fund the owner address. STT on chain 50312 for gas plus the subscription
+   funding above, and tUSDC through `faucet(10000)` on
+   `0x70a86D8842FB63C4Ad2b7cdddF530eBf1BB25d8E`.
+3. `npm run seed`. Checks `fixtures/*.json` against the invariants the demo walk
+   depends on and rewrites `fixtures/seed-manifest.json`.
+4. `npm run demo:reset`. Re-verifies the fixture side and prints the exact `cast`
+   commands for the chain side (`halt()`, then `withdraw(uint256)`, or a
+   redeploy). It never sends a transaction and never holds a key.
+5. Walk `DEMO.md` end to end. Check `GET /api/health` first: `adapterMode` reads
+   `real`, `vaultAddressSet` is `true`, and `rollLedgerSource` flips to `chain`
+   once one settlement has happened.
+
+With a wallet connected on chain 50312 and a vault address set, the console
+sends real transactions: approve and deposit, then one `startPlan` that writes
+the plan, queues the windows, funds the subscription and enters the first
+window. With either half missing it keeps its local path and the wallet strip
+says the write was simulated, which is what the deployed demo URL runs on.
 
 ## What we would build next
 
