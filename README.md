@@ -52,7 +52,8 @@ product rather than degrading it.
 | --- | --- | --- |
 | Somnia reactivity precompile `0x0100` | `contracts/src/PerennisVault.sol` | The vault opens its own subscription on `MarketResolved` and implements `ISomniaEventHandler._onEvent`. This is what makes the roll happen in the settlement block with no keeper. |
 | DreamDEX BinaryMarketsModule | `contracts/src/PerennisVault.sol`, `lib/dreamdex.ts` | `redeem` converts the winning ERC-6909 outcome token back to collateral, `buy` enters the next window, `marketState` gates the write on lifecycle state 1 (Trading). |
-| Chain reads for the console | `lib/dreamdex.ts` | `fetchVaults` reads `snapshot()` and `plan()` off the deployed vault with viem, `fetchRollLedger` builds the whole roll ledger from `RollSettled` logs so every row links to a real Shannon transaction, `fetchEventWindows` reads live market lifecycle state, `fetchCollateralDecimals` reads decimals off the token instead of assuming 6. |
+| DreamDEX markets SDK | `lib/markets.ts` | `discoverEventWindows()` calls `loadMarkets()` and keeps what `isBinaryMarket()` accepts, so the window queue is real market ids rather than a list written by hand. Three levels: the SDK, then a per id `getMarket(bytes32)` read, then the fixtures, and `GET /api/health` says which one answered. |
+| Chain reads for the console | `lib/dreamdex.ts` | `fetchVaults` reads `snapshot()` and `plan()` off the deployed vault with viem, `fetchRollLedger` builds the whole roll ledger from `RollSettled` logs so every row links to a real Shannon transaction, `fetchEventWindows` delegates to market discovery above, `fetchCollateralDecimals` reads decimals off the token instead of assuming 6. |
 
 Every screen and every API route reads through one interface, `PerennisAdapter`
 in `lib/adapters/`. `ADAPTER_MODE=fake` serves the fixtures in `fixtures/`,
@@ -67,6 +68,26 @@ looking at.
 `lib/vault.ts` is a line for line mirror of the contract's settlement path, so
 the UI can show you what the vault will do before anything is signed. If you
 change a stop rule in one, change it in the other.
+
+## Tracks and how the code earns them
+
+The hackathon published no sponsor bounties. Two rows, one submission that
+enters both. `DELIVERY.md` has the deadlines and the pre-submission list.
+
+| Bounty | Prize | Slots | Required tech | Code file | DEMO step |
+| --- | --- | --- | --- | --- | --- |
+| $5,000 USDso Prize Pool | $5,000 USDso Prize Pool | not published | DreamDEX Event Contracts, Somnia | `lib/markets.ts`, `contracts/src/PerennisVault.sol` | 4 |
+| Featured placement in the Somnia Discord showcase series | Featured placement in the Somnia Discord showcase series | not published | DreamDEX Event Contracts, Somnia | `components/standing-plan-console.tsx` (`QueueStrip`) | 7 |
+
+Qualification, in the hackathon's own words: the project must use DreamDEX Event
+Contracts meaningfully, and the BUIDL form requires a GitHub link and a demo
+video. Judging weights: Innovation and Originality 20%, Technical Implementation
+25%, User Experience and Design 20%, Business and Ecosystem Impact 20%,
+Presentation and Demo 15%.
+
+The depth test: delete `lib/markets.ts` and DEMO steps 2 and 7 break, because the
+open window on the vault card and every id in the queue strip come through
+`discoverEventWindows()`.
 
 ## Tech stack
 
@@ -114,6 +135,11 @@ NEXT_PUBLIC_CONTRACT_ADDRESS=      # the deployed PerennisVault
 NEXT_PUBLIC_BINARY_MARKETS_MODULE= # DreamDEX BinaryMarketsModule on Shannon
 ```
 
+`NEXT_PUBLIC_MARKET_DISCOVERY` picks which level of `lib/markets.ts` runs first
+and defaults to `sdk`, which falls through to the per id read and then to the
+fixtures on its own. Set it to `seed` to pin the console to fixtures while
+recording without a network.
+
 `NEXT_PUBLIC_COLLATERAL_TOKEN` already points at tUSDC and only needs changing
 if you move collateral. Nothing else is required, and no key in this app holds a
 secret: the deployer key lives behind `FARM_EVM_PRIVATE_KEY`, is used by forge
@@ -121,11 +147,14 @@ only, and is read by no file under `app/`, `components/` or `lib/`.
 
 `GET /api/health` is how you check whether the flip took. It reports
 `adapterMode`, `chainId`, the collateral `decimals` it actually read,
-`vaultAddressSet`, the reactivity precompile address, and `rollLedgerSource`.
-That last field is the one that matters: it says `"chain"` once the ledger is
-being built from `RollSettled` logs and `"seed"` while the console is still on
-fixtures. `GET /api/rolls` returns the ledger on its own, and takes an optional
-`limit` (1 to 12) and `address`.
+`vaultAddressSet`, the reactivity precompile address, `rollLedgerSource` and
+`marketDiscovery`. Two fields matter most: `rollLedgerSource` says `"chain"` once
+the ledger is being built from `RollSettled` logs and `"seed"` while the console
+is still on fixtures, and `marketDiscovery.via` says which level of
+`lib/markets.ts` produced the window list (`"sdk"` once
+`@somnia-chain/markets-sdk` resolves, `"market-ids"` for the per id read,
+`"seed"` for the fixtures). `GET /api/rolls` returns the ledger on its own, and
+takes an optional `limit` (1 to 12) and `address`.
 
 Every read falls back rather than failing. A missing address, a timeout or a
 rejected call comes back as `source: "seed"` with a written reason in `note`,
@@ -169,9 +198,10 @@ says the write was simulated, which is what the deployed demo URL runs on.
 
 ## What we would build next
 
-- Replace the hardcoded market id list with `@somnia-chain/markets-sdk`
-  `loadMarkets()` plus `isBinaryMarket()`, and take the order book from
-  `fetchOrderBook()` so implied probability is live rather than a snapshot.
+- Take the order book from `fetchOrderBook()` on the markets SDK so implied
+  probability moves during the window instead of being the ask at discovery
+  time. `lib/markets.ts` already loads the SDK, so this is one more call on a
+  module that exists.
 - A factory so each user gets their own vault clone from the UI, instead of one
   deploy per person.
 - Let a plan follow a spread rather than a fixed side: keep rolling, but pick the
