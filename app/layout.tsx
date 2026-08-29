@@ -18,6 +18,12 @@ export const metadata: Metadata = {
       "Write the plan once. The vault rolls itself at every settlement, no keeper and no bot process.",
     type: "website",
   },
+  // The image itself is app/opengraph-image.png and Next serves it from the file
+  // convention, absolute URL and all, off metadataBase above. Nothing sets
+  // openGraph.images by hand and there is no opengraph-image.tsx beside the png.
+  twitter: {
+    card: "summary_large_image",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

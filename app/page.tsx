@@ -4,6 +4,9 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+// Config, not chain code. lib/config.ts imports nothing, so naming the chain id
+// here costs this static page no bundle weight.
+import { CHAIN_ID } from "@/lib/config";
 
 export const metadata: Metadata = {
   title: "Standing order plans for Event Contracts",
@@ -39,6 +42,25 @@ const comparisons = [
   {
     label: "A keeper network",
     body: "Chainlink Automation and Gelato poll from outside and send a separate transaction, so the roll lands a block or more after settlement and carries a keeper fee. The Somnia reactivity handler runs in the settlement block itself. There is no gap between resolve and re-entry.",
+  },
+];
+
+const shipped = [
+  {
+    title: "The vault contract",
+    body: "PerennisVault holds the collateral, the plan and the window queue, and implements the Somnia reactivity handler that validators call in the settlement block. The stop rules are conditions in that settlement path, not a check the frontend runs.",
+  },
+  {
+    title: "Market discovery through the DreamDEX markets SDK",
+    body: "The window list comes from loadMarkets() filtered by isBinaryMarket(), so the ids written into the queue are ids the binary markets module can resolve. Two fallbacks sit behind it, a per id market read and the fixture set, and the health route says which one answered.",
+  },
+  {
+    title: "The roll ledger, read back from the chain",
+    body: "Every row in the ledger is built from a RollSettled log on the deployed vault, so each one links to a real Shannon transaction. The validator call badge is derived by comparing the sender against the vault owner, not asserted.",
+  },
+  {
+    title: "One signature, then nothing",
+    body: "Approve when the allowance is short, deposit, then a single startPlan that writes the plan, queues the windows, funds the subscription and enters the first market. Arming more windows is permissionless, so anyone can refill a dry queue.",
   },
 ];
 
@@ -83,7 +105,9 @@ export default function Home() {
             </Button>
           </div>
 
-          <dl className="mt-14 grid max-w-2xl grid-cols-3 gap-8 border-t border-border pt-8">
+          {/* "Same block as settlement, no gap to re-enter" needs more than a
+              third of a 360px screen, so the three figures stack below sm. */}
+          <dl className="mt-14 grid max-w-2xl grid-cols-1 gap-6 border-t border-border pt-8 sm:grid-cols-3 sm:gap-8">
             {[
               ["1", "signature for an eight window plan"],
               ["0", "keepers, bots or servers running"],
@@ -198,6 +222,50 @@ export default function Home() {
               height={132}
               className="mx-auto w-full max-w-xs"
             />
+          </div>
+        </div>
+      </section>
+
+      {/* What shipped. Written after the build, so every line below names
+          something that exists in this repo rather than something planned. */}
+      <section className="border-t border-border">
+        <div className="mx-auto max-w-6xl px-6 py-20 sm:py-24">
+          <div className="max-w-[68ch]">
+            <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+              What is running today
+            </h2>
+            <p className="mt-3 text-muted-foreground">
+              Perennis is a vault contract plus one screen. These four pieces are
+              written against Somnia Shannon (chain {CHAIN_ID}) and serve the
+              console the moment the contract addresses are configured.
+            </p>
+          </div>
+
+          <ul className="mt-10 grid gap-5 md:grid-cols-2">
+            {shipped.map((item) => (
+              <li key={item.title}>
+                <Card className="h-full">
+                  <CardContent className="space-y-2 p-6">
+                    <p className="text-sm font-medium text-primary">
+                      {item.title}
+                    </p>
+                    <p className="text-sm leading-relaxed text-muted-foreground">
+                      {item.body}
+                    </p>
+                  </CardContent>
+                </Card>
+              </li>
+            ))}
+          </ul>
+
+          <div className="mt-10 flex flex-wrap items-center gap-4">
+            <Button asChild size="lg">
+              <Link href="/console">Open the console</Link>
+            </Button>
+            <p className="text-sm text-muted-foreground">
+              The console is where the demo starts. With no addresses configured
+              it runs on the fixture set and says so on the badge.
+            </p>
           </div>
         </div>
       </section>
