@@ -84,7 +84,7 @@ body {
 }
 
 /* --- the motion system --------------------------------------------------
-   Two keyframes, both prefixed pns-, and three helper classes. That is the
+   Three keyframes, all prefixed pns-, and four helper classes. That is the
    whole system, and IDENTITY.md is why it is this small.
 
    Ink-in is opacity only. Nothing translates, nothing floats, nothing pulses,
@@ -114,8 +114,31 @@ body {
   }
 }
 
+/* The sparkline draw. Phase 9's one addition to the system, and it is the same
+   idea as the hairline rule: a decorative stroke arriving, never the visibility
+   of a value. The path carries pathLength="100", so the dash maths is unit free
+   and no JavaScript has to measure the geometry.
+
+   The base style is the FINISHED line (dashoffset 0). Only the keyframe's `from`
+   hides it, so a browser with animations disabled, a reader on reduced motion,
+   and a screenshot taken before the animation starts all get the whole path. */
+@keyframes pns-draw-in {
+  from {
+    stroke-dashoffset: 100;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
 .pns-ink-in {
   animation: pns-ink-in 420ms ease-out both;
+}
+
+.pns-draw {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 0;
+  animation: pns-draw-in 900ms ease-out forwards;
 }
 
 .pns-rule {
@@ -137,9 +160,11 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .pns-ink-in,
-  .pns-rule {
+  .pns-rule,
+  .pns-draw {
     animation: none;
     opacity: 1;
     transform: none;
+    stroke-dashoffset: 0;
   }
 }
