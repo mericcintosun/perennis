@@ -1,18 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 132" width="200" height="132" role="img" aria-label="Settle, redeem, re-enter, repeated without a signature">
   <title>The roll loop</title>
-  <g fill="none" stroke="#1E2A36" stroke-width="2">
-    <rect x="14" y="12" width="74" height="34" rx="10"/>
-    <rect x="112" y="12" width="74" height="34" rx="10"/>
-    <rect x="112" y="86" width="74" height="34" rx="10"/>
-    <rect x="14" y="86" width="74" height="34" rx="10"/>
+  <g fill="none" stroke="#33291F" stroke-width="2">
+    <rect x="14" y="12" width="74" height="34" rx="2"/>
+    <rect x="112" y="12" width="74" height="34" rx="2"/>
+    <rect x="112" y="86" width="74" height="34" rx="2"/>
+    <rect x="14" y="86" width="74" height="34" rx="2"/>
   </g>
-  <g fill="#94A3B8" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="9" text-anchor="middle">
+  <g fill="#A8998B" font-family="'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="9" text-anchor="middle">
     <text x="51" y="33">Window locks</text>
     <text x="149" y="33">Market resolves</text>
     <text x="149" y="107">Vault redeems</text>
     <text x="51" y="107">Next window</text>
   </g>
-  <g fill="none" stroke="#2DD4BF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <g fill="none" stroke="#D2622F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M88 29h18"/>
     <path d="M100 24l6 5-6 5"/>
     <path d="M149 46v34"/>
@@ -22,6 +22,6 @@
     <path d="M51 86V52"/>
     <path d="M46 58l5-6 5 6"/>
   </g>
-  <circle cx="100" cy="66" r="15" fill="none" stroke="#F5A524" stroke-width="2" stroke-dasharray="3 4"/>
-  <text x="100" y="69" fill="#F5A524" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle">STOPS</text>
+  <rect x="85" y="51" width="30" height="30" fill="none" stroke="#A8998B" stroke-width="2" stroke-dasharray="3 4"/>
+  <text x="100" y="69" fill="#A8998B" font-family="'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle">STOPS</text>
 </svg>

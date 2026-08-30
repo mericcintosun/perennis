@@ -1,5 +1,16 @@
 "use client";
 
+// The masthead.
+//
+// ONE MARK. public/brand/logo.png exists, so it is the mark: one raster at 28px
+// and the word Perennis as text in the display face. The wordmark SVG that used
+// to sit beside it was a second drawing of the same idea, which is why the
+// header showed the logo twice. The wordmark vector under public/ is still on
+// disk for OG reuse and is imported by nothing.
+//
+// Opaque, per IDENTITY.md. No translucency and nothing blurred behind it: a
+// broadsheet masthead sits on the paper, it does not float over it.
+
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -17,7 +28,7 @@ export function SiteHeader({ chainId }: { chainId: number }) {
   const pathname = usePathname() ?? "/";
 
   return (
-    <header className="sticky top-0 z-20 border-b border-border bg-background/85 backdrop-blur">
+    <header className="sticky top-0 z-20 border-b border-border bg-background">
       {/* The row wraps instead of pushing the page sideways. min-h rather than a
           fixed h, so a wrapped header grows down and the sticky bar keeps its
           16 units of height at every width above that. */}
@@ -26,32 +37,26 @@ export function SiteHeader({ chainId }: { chainId: number }) {
           <Image
             src="/brand/logo.png"
             alt=""
-            width={32}
-            height={32}
-            className="h-8 w-8 rounded-md object-contain"
+            width={28}
+            height={28}
+            className="h-7 w-7 object-contain"
             priority
           />
-          <Image
-            src="/logo.svg"
-            alt="Perennis"
-            width={162}
-            height={24}
-            className="h-6 w-auto"
-            priority
-          />
+          <span className="font-serif text-[15px] tracking-wide">Perennis</span>
         </Link>
 
         <div className="flex items-center gap-3">
+          {/* Words only. The dot that used to breathe here said nothing a
+              sentence does not say, and it was the loudest thing on the page. */}
           <Badge
             variant="outline"
-            className="hidden gap-2 font-normal sm:inline-flex"
+            className="hidden font-normal sm:inline-flex"
           >
-            <span className="size-1.5 rounded-full bg-primary pulse-dot" />
             Somnia Shannon · chain {chainId}
           </Badge>
 
           <nav aria-label="Main">
-            <ul className="flex items-center gap-1">
+            <ul className="flex items-center gap-4">
               {links.map((link) => {
                 const current =
                   link.href === "/"
@@ -66,12 +71,13 @@ export function SiteHeader({ chainId }: { chainId: number }) {
                       // disclosure menu behind a hamburger would be one extra
                       // tap to reach half a nav, which is worse on a phone than
                       // the nav itself. The explicit min height is what makes
-                      // each one a real target.
+                      // each one a real target. The current one is marked with a
+                      // rule under it rather than with a filled pill.
                       className={cn(
-                        "inline-flex min-h-11 items-center rounded-md px-3 py-1.5 text-sm transition-colors sm:min-h-0",
+                        "inline-flex min-h-11 items-center text-sm transition-colors sm:min-h-0",
                         current
-                          ? "bg-secondary font-medium text-primary"
-                          : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+                          ? "text-primary underline underline-offset-8 decoration-2"
+                          : "text-muted-foreground hover:text-foreground"
                       )}
                     >
                       {link.label}
