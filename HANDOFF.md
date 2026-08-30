@@ -2294,3 +2294,121 @@ because they are new files:
   it before submitting. A grep also hits one prose sentence in each file that
   names the string, so two hits left after filling both files in is correct and
   six hits means nothing was filled in.
+
+---
+
+# Phase 8, structural frontend overhaul, the broadsheet identity
+
+## Goal
+
+The judge panel scored User Experience 3/3/3 with the note "in this criterion I
+have zero pixels". Pixels now existed and they were the problem: the shipped
+landing was a teal-on-navy template, and the two BEFORE full page shots were a
+solid black void from the fold down. This phase authored an identity, rebuilt the
+landing against it, and made every section visible in a full page capture.
+
+## Status
+
+All five slices applied. Nothing was cut. `IDENTITY.md` exists at the repo root
+and is now law for visual decisions. Not verified: `npm run build`, because this
+phase had no shell. The runner builds and gets one repair round.
+
+## Decisions
+
+- **Clay on warm brown-black rather than the teal-on-navy that shipped.** The old
+  palette (`#0B0F14` ground, `#2DD4BF` teal, `#F5A524` amber) is the default any
+  dark dashboard template arrives with, and it read as one. The new ground is
+  `#16110D`, a brown-black where red is the largest channel and blue the
+  smallest, and the single accent is `#D2622F`, clay, hue 20. One accent, not
+  two: amber is banned outright, including as the warning token, because a second
+  warm hue next to clay reads as an accident. Outcome colour moved to
+  `--positive` `#8FA75B` and `--negative` `#CB5F4F`, and every coloured ledger
+  figure now carries the word WON or LOST so hue is never the only carrier.
+- **`public/brand/logo.png` is kept as the one mark despite its pre-identity
+  colours.** The ONE MARK rule needs a mark, that raster is the only one on disk,
+  and `public/brand/*` sat outside the Phase 8 fence lift. The header now renders
+  it at 28px next to the word Perennis in Fraunces, and the second brand image
+  (`public/logo.svg`) was removed from both the header and the footer. Repainting
+  the raster is Phase 9 work.
+- **The IntersectionObserver reveal was removed, not tuned.** `.reveal { opacity:
+  0 }` plus a first-intersection class is why ninety percent of both BEFORE shots
+  were black: a full page capture never scrolls, so the observer never fires. The
+  replacement is two keyframes, `pns-ink-in` (opacity only) and `pns-rule-draw`
+  (a hairline drawing with `scaleX`), one masthead entrance above the fold, and
+  nothing below the fold that starts hidden. There is no IntersectionObserver
+  left anywhere in the repository.
+- **Stagger rides `nth-child`, not a custom property.** The old recipe wrote
+  `style={{ "--delay": "160ms" }}` from a component and read it in
+  `animation-delay`. The ladder now lives in three rules on `.pns-masthead` in
+  `app/globals.css`, so no component writes a style attribute to get a delay.
+- **The tab stepper was deleted outright rather than restyled.** ARCHETYPE is L3,
+  an editorial broadsheet, and a `role="tablist"` with mono trace lines is an L2
+  pattern. Its three sentences survive as three static dispatch entries, with the
+  call named in plain language ("validators call the vault's handler in that same
+  block") instead of as a mono `_onEvent(...)` chip.
+
+## Failed attempts
+
+None that needed a second approach. One constraint shaped the result: this
+session had no shell, so four files that should have been deleted
+(`components/console-preview.tsx`, `components/loop-stepper.tsx`,
+`components/reveal.tsx`, `components/copy-chip.tsx`) are left as four line
+tombstones carrying only `export {}`. Nothing imports them, they add nothing to
+the bundle, and every identifier that used to live in them greps to zero. **The
+runner should `git rm` all four.**
+
+## Files changed
+
+Added: `IDENTITY.md`, `.farm-delta.md`, `.farm-commits.json`,
+`components/dispatch-list.tsx`, `components/address-copy.tsx`.
+
+Changed: `app/globals.css`, `app/layout.tsx`, `app/page.tsx`,
+`app/icon.svg`, `app/console/loading.tsx`, `app/global-error.tsx`,
+`components/site-header.tsx`, `components/site-footer.tsx`,
+`components/proof-panel.tsx`, `components/standing-plan-console.tsx`,
+`components/wallet-panel.tsx`, `components/brand/marks.tsx`,
+`components/ui/card.tsx`, `components/ui/button.tsx`, `components/ui/badge.tsx`,
+`components/ui/input.tsx`, `components/ui/alert.tsx`,
+`components/ui/skeleton.tsx`, `public/logo.svg`,
+`public/illustrations/roll-loop.svg`, `public/illustrations/window-grid.svg`,
+`DEMO.md`, `CLAUDE.md`, `docs/SCREENSHOTS.md`, `HANDOFF.md`.
+
+Emptied, pending deletion: `components/console-preview.tsx`,
+`components/loop-stepper.tsx`, `components/reveal.tsx`,
+`components/copy-chip.tsx`.
+
+Untouched, as fenced: `lib/`, `contracts/`, `fixtures/`, `scripts/`, `app/api/`,
+`public/brand/*`, `app/opengraph-image.png`, and `README.md` (grepped for the
+teal and amber palette wording and it names neither).
+
+## Commands run
+
+None. This phase had no shell: no `npm install`, no `npm run build`, no
+`npm run test:contracts`, no `git`. Every acceptance item below that needs a
+command is the runner's.
+
+## Open questions
+
+1. **`npm run build` is unverified.** The two risks worth checking first are the
+   three `next/font/google` imports in `app/layout.tsx` (Fraunces is a variable
+   font and takes no `weight`, the two IBM Plex faces are static and are given
+   explicit weight arrays) and the four tombstoned modules, which must compile as
+   empty modules under `isolatedModules`.
+2. **The four tombstones need `git rm`**, listed under Failed attempts.
+3. **`public/brand/logo.png` and `public/brand/og.png` still carry the old teal
+   and amber.** The raster in the masthead is 28px so the clash is small, but the
+   OG card is a full preview image in the pre-identity palette. Phase 9.
+4. **`app/opengraph-image.png` is likewise pre-identity** and is fenced. It can
+   only be replaced by regenerating the png itself, never by adding an
+   `app/opengraph-image.tsx`.
+5. **Lighthouse is unmeasured this phase.** Three webfont families is two more
+   than the site loaded before, all with `display: "swap"` and latin subsets
+   only. If performance drops below 80, the first lever is dropping the 600
+   weight from IBM Plex Sans.
+
+## Next best step
+
+Phase 9: the hero scene, the brand set and the submission files. The masthead is
+deliberately typographic and has room for one real scene beside it, the brand
+rasters under `public/brand/` still need repainting into the clay palette, and
+`SUBMISSION.md` and `EVIDENCE.md` are still waiting on the deploy.

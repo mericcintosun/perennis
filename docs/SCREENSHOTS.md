@@ -19,13 +19,13 @@ Capture every shot twice, at these viewport widths:
 | 360 | `docs/step-<n>-360.png` | The mobile check. `DELIVERY.md` "Before submitting" asks for the whole walk at 360, and this is the record of it. |
 
 Use a device pixel ratio of 2 if the tool offers it. PNG, not JPEG: these are
-screens of text and a JPEG will smear the mono type in the trace lines.
+screens of text and a JPEG will smear the monospace addresses.
 
-**Scroll before you capture.** The lower sections of `/` are wrapped in
-`components/reveal.tsx`, which adds a class on first intersection. A full page
-capture taken without scrolling shows those sections at opacity 0. That is the
-capture tool, not a bug in the page. Scroll each section into view, let it fade
-in, then capture.
+**No scrolling ritual any more.** Phase 8 deleted the scroll observer that used
+to hold the lower sections of `/` at opacity 0 until they came into view. Nothing
+below the fold starts hidden, so a full page capture taken without scrolling now
+shows every section. If a section comes out blank, that is a bug in the page and
+it reopens Phase 8.
 
 ## The nine shots
 

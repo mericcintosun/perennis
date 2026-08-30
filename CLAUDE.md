@@ -75,6 +75,25 @@ off limits, and anything new on the write path goes through `lib/tx.ts`.
 - `contracts/script/Deploy.s.sol`
 - the settlement logic inside `contracts/src/PerennisVault.sol`
 
+### Fence lift, Phase 8 only, now spent
+
+Phase 8 replaced the palette wholesale, and four vector files carried the dead
+hexes in their own markup rather than through a token. Phase 8 was granted a
+named exception to the `public/` and `app/icon.svg` rules above for exactly those
+four files, and the repaint is already applied:
+
+1. `app/icon.svg`, ground `#16110D`, strokes `#D2622F` and `#F3EAE0`, `rx="4"`
+2. `public/logo.svg`, now a text-only wordmark with the glyph paths dropped. It
+   is kept for OG reuse and is imported by nothing under `app/` or `components/`
+3. `public/illustrations/roll-loop.svg`
+4. `public/illustrations/window-grid.svg`
+
+Everything else under `public/` stayed untouched, `public/brand/logo.png`,
+`public/brand/og.png` and `app/opengraph-image.png` in particular, and no
+`app/opengraph-image.tsx` was added. `public/brand/logo.png` is the one mark in
+the header under the ONE MARK rule, and repainting that raster is Phase 9 work.
+The fence is closed again.
+
 ### Fence lift, Phase 2 only, now spent
 
 Phase 2 was granted a named exception to that last rule for exactly four
@@ -171,12 +190,23 @@ effortless. Vary sentence length, use concrete numbers, write like a builder.
 
 ## Design rules
 
-All colors are CSS variables in `app/globals.css`. No hex literal in any file
-under `app/` or `components/`. Teal carries the identity, amber is only for stop
-rules and loss states. Every interactive primitive goes through `components/ui/`
-with `cn()`, which today means `badge`, `button`, `card`, `input`, plus the three
-Phase 8 added: `alert` (variants `default` and `warning`), `skeleton` and
-`separator`. Dark only, and that decision is final: there is no theme toggle.
+**`IDENTITY.md` at the repo root is law for every colour, font, radius, layout
+and motion decision.** It was authored in Phase 8 and it outranks taste. Read it
+before touching anything visual. The token table lives there and is implemented
+in the `:root` block of `app/globals.css`, which is the only place a colour is
+allowed to exist: no hex literal in any file under `app/` or `components/`.
+
+Short version: warm brown-black ground, one clay accent (`--primary`), outcome
+colour through `--positive` and `--negative` with the word WON or LOST always
+beside the figure, square corners at `--radius: 0.125rem`, Fraunces for display,
+IBM Plex Sans for text, IBM Plex Mono for addresses, hashes, market ids and block
+numbers only. There is no amber in this product. Two keyframes exist,
+`pns-ink-in` and `pns-rule-draw`, and there is no IntersectionObserver anywhere.
+
+Every interactive primitive goes through `components/ui/` with `cn()`, which
+today means `badge`, `button`, `card`, `input`, `alert` (variants `default` and
+`warning`), `skeleton` and `separator`. Dark only, and that decision is final:
+there is no theme toggle.
 
 ## Compaction
 

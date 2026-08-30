@@ -70,14 +70,18 @@ Each step names the route that serves it.
    module has not resolved says exactly that, and a queue the vault is holding
    privately says that instead of showing an invented id.
 
-8. **`/`** The landing page. It opens on the claim, the mono stat strip (one
-   signature, zero keepers, the 20 second demo clock, the reactivity precompile
-   `0x0100`) and a static picture of the console beside it. Click through the
-   three tab stepper under "How it works": write, roll, halt, each with the call
-   it makes. Then the three stat tiles, which are the numbers in this
-   repository (3 levels of market discovery, 11 contract tests, 0 keeper
-   transactions) with the longer comparison folded away under them. Nothing here
-   is signed and nothing is fetched.
+8. **`/`** The landing page, an editorial page rather than a dashboard. It opens
+   on the masthead: the claim "Hold a view for four hours. Sign once." set in the
+   display face, the lead paragraph, one button into the console, and under a
+   hairline the dateline, which is the only monospace line in the first viewport
+   and names Somnia Shannon, chain 50312 and the reactivity precompile `0x0100`.
+   Scroll and there is nothing to click through: "How it works" is three numbered
+   dispatch entries, write, roll and halt, each one naming the call in plain
+   language. "What is running today" is three more, and every number lives inside
+   its sentence (three levels of market discovery, eleven contract tests, zero
+   keeper transactions), with the longer comparison folded away under them.
+   Nothing here is signed and nothing is fetched, and every section is visible in
+   a full page screenshot because nothing on this page starts hidden.
 
 9. **`/#proof`** Scroll to the proof panel at the bottom of the landing page. It
    names the vault, the collateral token and the DreamDEX BinaryMarketsModule,
@@ -107,7 +111,7 @@ check.
 | 5 | `explorerTxUrl()` and the `trigger: "reactivity"` field on `RollEntry` |
 | 6 | Vault 03 seeded as `STOPPED` on `consecutive-losses` |
 | 7 | `QueueStrip` in `components/standing-plan-console.tsx`, `discoverEventWindows()` in `lib/markets.ts` |
-| 8 | `app/page.tsx`, `components/loop-stepper.tsx`, `components/brand/marks.tsx` |
+| 8 | `app/page.tsx`, `components/dispatch-list.tsx`, `components/brand/marks.tsx` |
 | 9 | `components/proof-panel.tsx`, `lib/config.ts` |
 
 Steps 1 to 6 keep the numbers they were given in Phase 1. `HANDOFF.md` sections
