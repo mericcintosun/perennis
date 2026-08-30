@@ -6,25 +6,25 @@ stop rules enforced as contract terms.**
 
 ## Demo
 
-Three links, with what is actually behind each one. Nothing in this table is
-claimed to be live: the two empty rows are filled in by a human before the
-submission goes on the form, and until then they say so.
+Four links, with what is actually behind each one. Each row keeps its two claims
+apart: the middle column says only whether the thing exists today, and the right
+column names only the artefact you open.
 
 | What | Status today | Where |
 | --- | --- | --- |
-| Live app | `PENDING, filled by a human before submitting`. The intended production target is https://perennis-app.vercel.app. It goes on the DoraHacks form only after it loads `/console` in a private window. | https://perennis-app.vercel.app |
-| Demo video | `PENDING, filled by a human before submitting`. The 2:20 cut is written, second banded, rehearsable, and carries a screenshot fallback per band. | [VIDEO.md](VIDEO.md) |
-| On chain proof | Not deployed. One row per artefact, every slot empty and labelled, with the recipe to produce it. The `Smoke.s.sol` deposit transaction hash goes in row 9 of that file. The live app carries the same addresses in its proof panel at `/#proof`, each linked to the Shannon explorer, and `GET /api/health` says whether the deployment is reading the chain or the fixtures. An address that is not configured says so in words there rather than showing a placeholder hash. | [EVIDENCE.md](EVIDENCE.md), `/#proof`, `GET /api/health` |
+| Live app | Deployed and answering. A probe on 30 August 2026 got 200 back in 298 ms. Whoever submits re-checks it in a cold private window, on the production deployment and not a preview URL, before pasting it on the form. | [perennis-app.vercel.app](https://perennis-app.vercel.app), and straight to the demo at [/console](https://perennis-app.vercel.app/console) |
+| Demo video | No take has been recorded. The form field still reads `PENDING, filled by a human before submitting`. | [VIDEO.md](VIDEO.md), the shot list a take follows. It is a script, not a recording: a 2:20 cut, second banded, with a screenshot fallback per band. |
+| On chain proof | Not deployed. As of 30 August 2026 every artefact row that needs a chain reads `NOT YET FILLED`. Two scripts produce them: `contracts/script/Deploy.s.sol` for the vault address and the deploy hash, then `contracts/script/Smoke.s.sol` for the deposit hash in row 9. | [EVIDENCE.md](EVIDENCE.md), one row per artefact with its explorer link shape. The live app carries the same addresses in its proof panel at `/#proof`, and `GET /api/health` reports whether the deployment is reading the chain or the fixtures. An address that is not configured says so in words rather than showing a placeholder hash. |
 | Security | Contract addresses, every wallet permission this app requests, and the bounded approval amounts. It never asks for `eth_sign` or `personal_sign`, and no wallet dialog opens on page load. | [SECURITY.md](SECURITY.md) |
 
-The same placeholder marks the same two fields in
-[SUBMISSION.md](SUBMISSION.md), which is the paste ready DoraHacks form. It is
-one string, byte identical in both files, and it appears exactly twice in each:
-the live app row and the demo video row here, the "Live demo link" and "Demo
-video link" blocks there. Grep the repository for `PENDING` before submitting.
-Four hits means nothing has been filled in, zero means both files are done, and
-anything between means one field was missed. Replace all four copies in the same
-sitting.
+One field is still a placeholder, and it is the same string in
+[SUBMISSION.md](SUBMISSION.md), which is the paste ready DoraHacks form. The live
+app link is filled in, here and in the "Live demo link" block there, so two of
+the original four copies are gone. What is left is one string, byte identical in
+both files: the demo video row above, and the "Demo video link" block there. Grep
+the repository for that placeholder before submitting. Two hits means the video
+field is still empty in both files, zero means both are done, and one hit means a
+file was missed. Replace both copies in the same sitting.
 
 ## Try it in 60 seconds
 
