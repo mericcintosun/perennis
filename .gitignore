@@ -6,3 +6,9 @@ out/
 .vercel
 *.tsbuildinfo
 next-env.d.ts
+
+# Foundry build output. contracts/broadcast/ stays tracked on purpose: it is the
+# deploy evidence a judge checks, and it holds no key (transaction hashes,
+# addresses, calldata, nonces, and nothing else).
+contracts/cache/
+contracts/out/

@@ -188,7 +188,7 @@ function TxPendingBranch({
         className="font-mono text-xs underline underline-offset-4 hover:text-foreground"
         href={`${explorerBase}/tx/${state.hash}`}
         target="_blank"
-        rel="noreferrer"
+        rel="noopener noreferrer"
       >
         {shortHash(state.hash)}
       </a>
@@ -267,7 +267,7 @@ function ExplorerLink({
       className="font-mono text-xs underline underline-offset-4 hover:text-foreground"
       href={`${explorerBase}/tx/${hash}`}
       target="_blank"
-      rel="noreferrer"
+      rel="noopener noreferrer"
     >
       {shortHash(hash)}
     </a>
