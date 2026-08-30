@@ -31,6 +31,28 @@ export const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? 50312);
 export const RPC_URL =
   process.env.NEXT_PUBLIC_SOMNIA_RPC_URL ?? "https://dream-rpc.somnia.network";
 
+/**
+ * Optional standby endpoints, comma separated, tried in order when RPC_URL does
+ * not answer. Empty by default, which is the shape this app shipped with: one
+ * endpoint and nothing else. Read as a literal member access, like every other
+ * NEXT_PUBLIC_ key here, because Next.js substitutes these by matching the text.
+ */
+const RPC_FALLBACK_URLS = (
+  process.env.NEXT_PUBLIC_SOMNIA_RPC_FALLBACK_URLS ?? ""
+)
+  .split(",")
+  .map((url) => url.trim())
+  .filter((url) => url.length > 0);
+
+/**
+ * Every endpoint a read may go out on, primary first, duplicates removed. One
+ * entry unless NEXT_PUBLIC_SOMNIA_RPC_FALLBACK_URLS is set, so the default
+ * deployment behaves exactly as it did before this list existed.
+ */
+export const RPC_URLS: readonly string[] = Array.from(
+  new Set([RPC_URL, ...RPC_FALLBACK_URLS])
+);
+
 /** Block explorer base, used to link every roll transaction from the ledger. */
 export const EXPLORER_URL =
   process.env.NEXT_PUBLIC_EXPLORER_URL ??
@@ -93,11 +115,53 @@ export const RPC_TIMEOUT_MS = 6000;
 export const RPC_RETRY_COUNT = 1;
 
 /**
- * How far back getLogs looks for RollSettled. Shannon produces blocks fast, so
- * a wide window is cheap here and still bounded, which matters because some RPC
- * providers reject an unbounded fromBlock.
+ * Pause before the retry. An endpoint that answered 429 or 503 is being asked to
+ * shed load, and re-sending the identical request in the same millisecond is the
+ * one thing guaranteed not to help. Small enough that the retry still lands
+ * inside the page's render budget.
  */
-export const LEDGER_LOOKBACK_BLOCKS = 50_000n;
+export const RPC_RETRY_BACKOFF_MS = 350;
+
+/**
+ * How long a successful chain read stays usable after the fact. A later read
+ * that the endpoint refuses serves this instead of dropping the screen to
+ * fixtures, so one rejected call does not blank a console that had live numbers
+ * seconds earlier. Longer than the 20 second demo refresh, short enough that a
+ * genuinely stale figure ages out rather than being shown all afternoon.
+ */
+export const CHAIN_CACHE_TTL_MS = 45_000;
+
+/**
+ * Blocks per eth_getLogs call.
+ *
+ * This is the constant the QA crawl was failing on. The public Shannon endpoint,
+ * like most public JSON-RPC endpoints, caps the block span of a single
+ * eth_getLogs and answers a wider request with a rejection rather than a
+ * truncated result. The ledger used to ask for the whole lookback in one call
+ * and got that rejection every time, which is why a console reading live vault
+ * state still showed a fixture ledger. One thousand is the common published cap
+ * and is what the scan in lib/dreamdex.ts walks in.
+ */
+export const LEDGER_CHUNK_BLOCKS = 1_000n;
+
+/** Spans a single ledger scan may walk. Bounds the call count of one render. */
+export const LEDGER_MAX_CHUNKS = 10;
+
+/**
+ * Wall clock the ledger scan may spend before it returns what it has. The scan
+ * stops early as soon as it has MAX_LEDGER_ROWS rows, so this only binds on a
+ * vault with no recent settlements, and it keeps that case off the page's
+ * render budget.
+ */
+export const LEDGER_SCAN_BUDGET_MS = 3_000;
+
+/**
+ * How far back the scan looks for RollSettled, derived from the two constants
+ * above so the span and the budget cannot drift apart. Never block zero: an
+ * unbounded fromBlock is the other request shape public endpoints refuse.
+ */
+export const LEDGER_LOOKBACK_BLOCKS =
+  LEDGER_CHUNK_BLOCKS * BigInt(LEDGER_MAX_CHUNKS);
 
 /** Ledger rows the console ever renders, and the cap on per row RPC follow ups. */
 export const MAX_LEDGER_ROWS = 12;

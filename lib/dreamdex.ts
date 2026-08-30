@@ -41,14 +41,23 @@ import {
 } from "@/lib/abi";
 import {
   COLLATERAL_TOKEN,
+  LEDGER_CHUNK_BLOCKS,
   LEDGER_LOOKBACK_BLOCKS,
+  LEDGER_MAX_CHUNKS,
+  LEDGER_SCAN_BUDGET_MS,
   MAX_LEDGER_ROWS,
   VAULT_ADDRESS,
 } from "./config";
-import { classify, coreFailure, failureNote } from "./errors";
-import { logCore } from "./log";
+import { classify, coreFailure, failureNote, isFailureNote } from "./errors";
+import { logCore, logCoreWarn } from "./log";
 import { discoverEventWindows, toBytes32 } from "./markets";
-import { publicClient, somniaShannon, withTimeoutAndRetry } from "./rpc";
+import {
+  publicClient,
+  recentValue,
+  remember,
+  somniaShannon,
+  withTimeoutAndRetry,
+} from "./rpc";
 import { eventWindows, vaults } from "./data/seed";
 import type {
   ApiResponse,
@@ -112,12 +121,22 @@ export async function fetchEventWindows(): Promise<ApiResponse<EventWindow[]>> {
  * transaction hash and a real block number, so DEMO.md step 5 can open the row
  * on the Shannon explorer.
  *
- * Bounded on purpose, at three separate points:
- *   - fromBlock is latest minus LEDGER_LOOKBACK_BLOCKS, never block zero, so a
- *     provider that refuses an unbounded range still answers
+ * Bounded on purpose, at four separate points:
+ *   - the lookback is walked in LEDGER_CHUNK_BLOCKS spans, newest first, and no
+ *     single eth_getLogs ever asks for a wider range than that
+ *   - at most LEDGER_MAX_CHUNKS spans are walked, and the walk stops early both
+ *     on LEDGER_SCAN_BUDGET_MS and as soon as it holds MAX_LEDGER_ROWS rows
  *   - at most MAX_LEDGER_ROWS logs are kept, the most recent ones
  *   - the per row follow up reads run only over those kept logs
  * There is no unbounded loop anywhere on this path.
+ *
+ * The span walk is the fix for the QA finding that put a fixture ledger under a
+ * live Shannon badge. This function used to ask for the whole lookback in one
+ * call. Public JSON-RPC endpoints cap the block span of an eth_getLogs and
+ * answer anything wider with a rejection rather than a short result, so that one
+ * call failed every time, deterministically, and the retry re-sent exactly the
+ * request that had just been refused. Asking within the cap is the difference
+ * between a ledger and a fallback notice.
  *
  * `trigger` is derived, not assumed: the sender of the transaction that emitted
  * the log is compared against owner() on the vault. A sender that is not the
@@ -147,35 +166,35 @@ export async function fetchRollLedger(
     const address = VAULT_ADDRESS;
 
     const latest = await withTimeoutAndRetry(() => client.getBlockNumber());
-    const fromBlock =
-      latest > LEDGER_LOOKBACK_BLOCKS ? latest - LEDGER_LOOKBACK_BLOCKS : 0n;
-
-    const logs = await withTimeoutAndRetry(() =>
-      client.getLogs({
-        address,
-        event: rollSettledEvent,
-        fromBlock,
-        toBlock: "latest",
-      })
-    );
+    const scan = await scanRollLogs(address, latest);
 
     // Most recent rows only. Everything after this point iterates a list whose
     // length is capped by MAX_LEDGER_ROWS.
-    const recent = logs
+    const recent = scan.logs
       .filter((log) => log.transactionHash !== null)
       .slice(-MAX_LEDGER_ROWS);
 
     logCore("ledger logs read", {
       rows: recent.length,
+      spans: scan.spansRead,
       lookback: LEDGER_LOOKBACK_BLOCKS.toString(),
     });
 
     if (recent.length === 0) {
-      return {
+      return remember(LEDGER_CACHE_KEY, {
         source: "chain",
         data: [],
-        note: "No RollSettled logs in the lookback window yet. The first row lands when the open window settles.",
-      };
+        // A partial walk cannot claim the lookback is empty, only that the part
+        // of it Shannon served held no settlement.
+        note: scan.complete
+          ? "No RollSettled logs in the lookback window yet. The first row lands when the open window settles."
+          : failureNote(
+              coreFailure(
+                "upstream-error",
+                "Shannon served part of the ledger lookback, and no window had settled in the part that came back."
+              )
+            ),
+      } satisfies ApiResponse<RollEntry[]>);
     }
 
     const decimals = decimalsHint ?? (await fetchCollateralDecimals());
@@ -241,11 +260,122 @@ export async function fetchRollLedger(
       };
     });
 
-    return { source: "chain", data };
+    return remember(LEDGER_CACHE_KEY, {
+      source: "chain",
+      data,
+    } satisfies ApiResponse<RollEntry[]>);
   } catch (error) {
-    return seedFallback(seedLedger, "ledger logs read", error);
+    return recentOr(
+      LEDGER_CACHE_KEY,
+      seedLedger,
+      "ledger logs read",
+      "the roll ledger",
+      error
+    );
   }
 }
+
+const LEDGER_CACHE_KEY = "roll-ledger";
+const VAULTS_CACHE_KEY = "vaults";
+const DECIMALS_CACHE_KEY = "collateral-decimals";
+
+/**
+ * Walk the lookback backwards in LEDGER_CHUNK_BLOCKS spans and collect the
+ * RollSettled logs, newest span first.
+ *
+ * Why backwards: the ledger only ever renders the newest MAX_LEDGER_ROWS rows,
+ * so the newest span is the one most likely to answer the question, and a vault
+ * settling regularly is done after a single call. The full walk is the empty
+ * vault case, and LEDGER_SCAN_BUDGET_MS is what keeps that case off the page's
+ * render budget.
+ *
+ * One refused span does not sink the ledger. The rows already collected from
+ * newer spans are worth more than the ones the endpoint would not serve, so the
+ * walk records that it is incomplete and returns what it has. It only throws when
+ * nothing answered at all, which is a genuine upstream failure and the one case
+ * that should reach the fixtures.
+ */
+async function scanRollLogs(
+  address: `0x${string}`,
+  latest: bigint
+): Promise<{ logs: RollLog[]; complete: boolean; spansRead: number }> {
+  const deadline = Date.now() + LEDGER_SCAN_BUDGET_MS;
+  const floor =
+    latest > LEDGER_LOOKBACK_BLOCKS ? latest - LEDGER_LOOKBACK_BLOCKS : 0n;
+
+  let collected: RollLog[] = [];
+  let toBlock = latest;
+  let spans = 0;
+  let spansRead = 0;
+  let complete = true;
+  // Seeded, the same way withTimeoutAndRetry() seeds its own, so the throw below
+  // always has something to throw and never has to widen an unknown.
+  let lastError: unknown = new Error("ledger scan read no span");
+
+  while (spans < LEDGER_MAX_CHUNKS && toBlock >= floor) {
+    // Checked before the span is issued, not after it returns, so the budget
+    // bounds how long the walk may start work for rather than how long it may
+    // have already spent. Blocks are still unread at this point by definition of
+    // the loop guard, so the walk is incomplete and says so.
+    if (Date.now() > deadline) {
+      complete = false;
+      break;
+    }
+
+    // Width is taken from what is left rather than subtracted blindly, so
+    // fromBlock can never run below floor and the bigint can never go negative.
+    const remaining = toBlock - floor + 1n;
+    const width =
+      remaining < LEDGER_CHUNK_BLOCKS ? remaining : LEDGER_CHUNK_BLOCKS;
+    const fromBlock = toBlock - width + 1n;
+
+    try {
+      const batch = await getRollLogs(address, fromBlock, toBlock);
+      // Older spans go in front, so the collected list stays in block order and
+      // the slice(-MAX_LEDGER_ROWS) below still takes the newest rows. concat
+      // rather than unshift(...batch): a busy span would spread thousands of
+      // arguments onto the stack, and this has no argument count to blow.
+      collected = batch.concat(collected);
+      spansRead += 1;
+    } catch (error) {
+      lastError = error;
+      complete = false;
+      logCoreWarn("ledger span refused", {
+        from: fromBlock.toString(),
+        to: toBlock.toString(),
+        code: classify(error),
+      });
+    }
+
+    spans += 1;
+    // A full page of rows is every row the ledger will render, and they are the
+    // newest ones because the walk started at the head. Older spans cannot
+    // change what is shown, so there is no reason to pay for them.
+    if (collected.length >= MAX_LEDGER_ROWS) break;
+
+    toBlock = fromBlock - 1n;
+  }
+
+  // Nothing answered. That is upstream being down, not a quiet ledger.
+  if (spansRead === 0) throw lastError;
+
+  return { logs: collected, complete, spansRead };
+}
+
+/** One span, through the single retry loop. Split out so scanRollLogs reads as a walk. */
+function getRollLogs(
+  address: `0x${string}`,
+  fromBlock: bigint,
+  toBlock: bigint
+) {
+  const client = publicClient();
+  return withTimeoutAndRetry(() =>
+    client.getLogs({ address, event: rollSettledEvent, fromBlock, toBlock })
+  );
+}
+
+/** A decoded RollSettled log, taken from the call rather than restated by hand. */
+type RollLog = Awaited<ReturnType<typeof getRollLogs>>[number];
 
 /**
  * One transaction read per unique hash, so twelve ledger rows produced by three
@@ -389,15 +519,26 @@ export async function fetchVaults(): Promise<ApiResponse<Vault[]>> {
       ledger: ledger.data,
     };
 
-    return {
+    return remember(VAULTS_CACHE_KEY, {
       source: "chain",
       data: [vaults[0], live, vaults[2]],
-      ...(ledger.source === "seed" && ledger.note
+      // A ledger note travels up when it reports a degraded read, whether that
+      // was a full fallback to fixtures or a partial walk, so a chain badge never
+      // sits over rows this module cannot vouch for without a sentence naming
+      // them. "No window has settled yet" is not a degraded read and stays down
+      // on the ledger card, which already says exactly that.
+      ...(ledger.note && isFailureNote(ledger.note)
         ? { note: ledger.note }
         : {}),
-    };
+    } satisfies ApiResponse<Vault[]>);
   } catch (error) {
-    return seedFallback(vaults, "vault snapshot read", error);
+    return recentOr(
+      VAULTS_CACHE_KEY,
+      vaults,
+      "vault snapshot read",
+      "the vault state",
+      error
+    );
   }
 }
 
@@ -417,10 +558,18 @@ export async function fetchCollateralDecimals(): Promise<number> {
       })
     );
     logCore("decimals read", { decimals: Number(decimals) });
-    return Number(decimals);
+    return remember(DECIMALS_CACHE_KEY, Number(decimals));
   } catch {
-    logCore("chain read failed", { step: "decimals read", code: "upstream-error" });
-    return 6;
+    // The last value read off this token beats the assumed 6, because a token
+    // that is not 6 decimals would otherwise misprice the whole console for the
+    // length of one refused call.
+    const recent = recentValue<number>(DECIMALS_CACHE_KEY);
+    logCoreWarn("chain read failed", {
+      step: "decimals read",
+      code: "upstream-error",
+      served: recent === undefined ? "assumed" : "cached",
+    });
+    return recent ?? 6;
   }
 }
 
@@ -430,18 +579,68 @@ export async function fetchCollateralDecimals(): Promise<number> {
 // --- helpers -------------------------------------------------------------
 
 /**
+ * The last good value for this read if there is one, and only otherwise the
+ * fixtures.
+ *
+ * This is the order that matters for the console. A read Shannon refuses once
+ * should not throw away numbers that were live twenty seconds ago and replace
+ * them with fixtures plus a notice; it should show what it had and stay quiet.
+ * The fixture path is what is left when there is nothing recent to serve, which
+ * on a cold instance is the first refused read and is honest about it.
+ */
+function recentOr<T>(
+  key: string,
+  data: T,
+  step: string,
+  subject: string,
+  error: unknown
+): ApiResponse<T> {
+  const recent = recentValue<ApiResponse<T>>(key);
+  if (recent) {
+    const code = classify(error);
+    logCoreWarn("chain read failed", { step, code, served: "cached" });
+
+    // The rows really did come off Shannon, so the source stays "chain" and the
+    // badge is not made to lie. But they came off it a moment ago rather than
+    // just now, and a screen that does not say so is claiming a read it did not
+    // get. The note is what makes the difference visible.
+    return {
+      ...recent,
+      note: failureNote(
+        coreFailure(
+          code,
+          `Shannon did not answer ${subject} on this read, so ${subject} below is the last reading it returned.`
+        )
+      ),
+    };
+  }
+  return seedFallback(data, step, subject, error);
+}
+
+/**
  * The one failure shape. Logs a single line carrying the step name and the error
  * code, never the provider message and never the error object, then hands back
- * the fixtures with a hint written by us.
+ * the fixtures with a sentence written by us.
+ *
+ * On the wording: this note is rendered on a page a judge is reading, under a
+ * console that still works. It says which read did not answer and where the
+ * figures below it came from, and it does not reach for the vocabulary of a
+ * crash to do it. The machine code is still on the front for GET /api/health;
+ * noteHint() in lib/errors.ts takes it off before the console renders it.
  */
-function seedFallback<T>(data: T, step: string, error: unknown): ApiResponse<T> {
+function seedFallback<T>(
+  data: T,
+  step: string,
+  subject: string,
+  error: unknown
+): ApiResponse<T> {
   const code = classify(error);
-  logCore("chain read failed", { step, code });
+  logCoreWarn("chain read failed", { step, code, served: "seed" });
 
   const hint =
     code === "upstream-timeout"
-      ? "The Shannon RPC did not answer in time, so this screen fell back to seed data."
-      : "The Shannon RPC rejected the read, so this screen fell back to seed data.";
+      ? `Shannon did not answer ${subject} in time, so the figures below come from the fixture set.`
+      : `Shannon did not return ${subject} on this read, so the figures below come from the fixture set.`;
 
   return { source: "seed", data, note: failureNote(coreFailure(code, hint)) };
 }
