@@ -174,7 +174,9 @@ effortless. Vary sentence length, use concrete numbers, write like a builder.
 All colors are CSS variables in `app/globals.css`. No hex literal in any file
 under `app/` or `components/`. Teal carries the identity, amber is only for stop
 rules and loss states. Every interactive primitive goes through `components/ui/`
-with `cn()`. Dark only, and that decision is final: there is no theme toggle.
+with `cn()`, which today means `badge`, `button`, `card`, `input`, plus the three
+Phase 8 added: `alert` (variants `default` and `warning`), `skeleton` and
+`separator`. Dark only, and that decision is final: there is no theme toggle.
 
 ## Compaction
 

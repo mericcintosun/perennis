@@ -14,7 +14,7 @@ submission goes on the form, and until then they say so.
 | --- | --- | --- |
 | Live app | The intended production target. https://perennis-app.vercel.app. It goes on the DoraHacks form only after it loads `/console` in a private window. | https://perennis-app.vercel.app |
 | Demo video | Not recorded. The 90 second shot list is written, second banded and rehearsable. | [VIDEO.md](VIDEO.md) |
-| On chain proof | Not deployed. One row per artefact, every slot empty and labelled, with the recipe to produce it. | [EVIDENCE.md](EVIDENCE.md) |
+| On chain proof | Not deployed. One row per artefact, every slot empty and labelled, with the recipe to produce it. The live app carries the same addresses in its proof panel at `/#proof`, each linked to the Shannon explorer, and `GET /api/health` says whether the deployment is reading the chain or the fixtures. An address that is not configured says so in words there rather than showing a placeholder hash. | [EVIDENCE.md](EVIDENCE.md), `/#proof`, `GET /api/health` |
 | Security | Contract addresses, every wallet permission this app requests, and the bounded approval amounts. It never asks for `eth_sign` or `personal_sign`, and no wallet dialog opens on page load. | [SECURITY.md](SECURITY.md) |
 
 **The link is down? Run it locally in 30 seconds. No env vars needed.**
@@ -137,7 +137,7 @@ top to bottom:
   fields, `parsePlanForm()` in `lib/schemas.ts` is the only definition of a valid
   plan, and one signature sends `startPlan`.
 - **The live vault card** with the countdown ring (`CountdownRing`,
-  `components/standing-plan-console.tsx:1130`): balance, realised PnL, win rate,
+  `components/standing-plan-console.tsx:1301`): balance, realised PnL, win rate,
   and the open window's entry price, implied probability and book depth. The
   countdown is `DEMO_WINDOW_SECONDS = 20` standing in for a real 15 minute Event
   Contracts window, labelled as a demo clock under the ring. That compressed
@@ -145,7 +145,7 @@ top to bottom:
 - **The pre-write health strip**, from `preflight()` in `lib/vault.ts`: market
   lifecycle state, the collateral decimals read off the token, and the
   reactivity subscription.
-- **The queue strip** (`QueueStrip`, `components/standing-plan-console.tsx:907`),
+- **The queue strip** (`QueueStrip`, `components/standing-plan-console.tsx:939`),
   naming the next windows the vault will enter with the lifecycle state market
   discovery read for each id. It moves with no click and no signature.
 - **The roll ledger timeline**, right column. One row per settled window with its

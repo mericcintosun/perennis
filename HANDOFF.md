@@ -1705,3 +1705,289 @@ the health strip against live values (section 3F) is the last engineering item
 on the demo path, and the SDK documentation feedback report is free points that
 should be written straight out of the Phase 4 open questions while the friction
 is still fresh.
+
+---
+
+## 12. Phase 8 record, the structural frontend overhaul
+
+### Goal
+
+The jury panel scored User Experience 3 out of 10 with the note "I have zero
+pixels in this criterion". Two things followed from that. First, a stranger who
+opened `/` cold saw a wall of prose and had to click through to `/console`
+before anything looked like a product, so the landing page now shows the console
+instead of describing it. Second, none of the on chain evidence in
+`EVIDENCE.md` was reachable from the site at all, so this phase adds
+**`DEMO.md` step 9**, a proof panel on the landing page naming the vault, the
+collateral token and the BinaryMarketsModule with explorer links, plus a link to
+`GET /api/health`. Steps 1 to 8 keep their numbers and their behaviour.
+
+The wow moment is unchanged: the countdown ring reaches zero, nobody clicks, no
+wallet dialog opens, and the vault card redeems and re-enters itself.
+
+### Status
+
+Written, not executed. Nothing in this session was run: no `npm install`, no
+`npm run build`, no `npm run seed`, no `forge build`, no `forge test`, no RPC
+call, no dev server, no browser at any width. There was no shell. Every command
+dependent claim below is unverified and is the runner's to check. In particular
+every responsive and focus claim in this record is a reading of class names, not
+an observation.
+
+**Still mocked, unchanged by this phase.** This was a frontend structure phase
+and it touched no chain code, so the list is exactly what Phase 5 left:
+`resolveWindow()`, `settleAndRoll()` and `syntheticTxHash()` in `lib/vault.ts`,
+`toBytes32()` in `lib/markets.ts` and in `lib/tx.ts`, `DEMO_WINDOW_SECONDS = 20`
+in `components/standing-plan-console.tsx`, and the SDK response shape in
+`types/somnia-markets-sdk.d.ts`.
+
+### Decisions
+
+- **The hero is two columns from `lg` and the preview is static.**
+  `components/console-preview.tsx` is a server component with no `"use client"`,
+  no `useState`, no `Date.now()` and no `Math.random()`. Every number in it is a
+  literal read out of `fixtures/vaults.json` Vault 02: balance 193.53, realised
+  PnL +18.53 (193.53 plus the open 25 stake, minus the 200 deposited), win rate
+  67 percent from two wins in three settled rolls, and ledger rows 2 and 3 with
+  their real block numbers. It computes nothing and fetches nothing, so it
+  cannot disagree with the console by drifting, only by someone editing the
+  fixtures without editing it.
+- **The ring geometry is copied, not shared.** `CountdownRing` in
+  `components/standing-plan-console.tsx` lives in a `"use client"` file, so
+  importing it into a server component would pull the whole console into the
+  landing page's module graph. The preview repeats the four numbers that matter
+  (a 104 unit box, radius 38, stroke 6, and a frozen 11 of 20 progress) with a
+  comment naming where they came from.
+- **One primary CTA in the hero.** "Write a standing plan" into `/console` is
+  the only filled `Button` above the fold, and "See how the roll works" became a
+  text link under it. The closing CTA at the bottom of the page is filled again,
+  because it is screens away and nothing competes with it in that view. The two
+  mid page CTAs are `variant="outline"`.
+- **The proof panel imports `lib/config.ts` and nothing else from `lib/`.**
+  That file imports nothing at all, not even viem, so `components/proof-panel.tsx`
+  stays a plain server component and no chain code enters its module graph. It
+  does not import `shortHash()` from `lib/vault.ts` either: a four line local
+  `truncate()` was cheaper than pulling the roll engine into a static page.
+- **An unconfigured address says so in words.** Each row renders "not configured
+  in this deployment" with no link rather than a placeholder that looks like a
+  hash. Same rule `EVIDENCE.md` and the footer already follow, for the same
+  reason: a judge who checks a plausible looking hash finds a lie rather than a
+  gap.
+- **The `/#proof` link went into the console page intro, not the header.** The
+  header already wraps at 360px with two nav links, a logo pair and the chain
+  badge, and a third link would make that wrap the common case rather than the
+  edge case. The proof panel is on the landing page, so a landing visitor
+  reaches it by scrolling and the link only has to exist for someone standing on
+  `/console`.
+- **Three primitives, built out of what is already installed.**
+  `components/ui/alert.tsx` uses `cva` (already a dependency), `skeleton.tsx`
+  and `separator.tsx` need only `cn()`. No new npm dependency, no new env
+  variable, no new route, and no change to `lib/types.ts` or `lib/schemas.ts`.
+  Every ask-first item stayed unasked because none came up.
+- **`Separator` carries `role="separator"` and `aria-hidden`.** A rule between
+  two blocks of text is decorative, so it is announced to nobody, but the role
+  is what the phase asked for and what makes it greppable.
+- **Section eyebrows are a local `Eyebrow` in `app/page.tsx`,** not a fifth
+  primitive. It renders a `<p>`, carries no variant and no interaction, and a
+  primitive that wraps one class string would be ceremony.
+- **The two illustrations and the whole brand set are untouched.**
+  `public/brand/og.png` still washes the hero, `public/illustrations/window-grid.svg`
+  and `roll-loop.svg` are still rendered, `app/icon.svg` and
+  `app/opengraph-image.png` are untouched and no `app/opengraph-image.tsx` was
+  created. Nothing was added to `public/`.
+
+### Failed attempts and deviations
+
+- **Nothing was run, so no error could survive two correction attempts.** This
+  session had no shell, no network and no browser.
+- **`app/global-error.tsx:34` still renders a bare `<button>`.** The acceptance
+  gate asks for `<button` to appear only inside `components/ui/button.tsx`. This
+  one is deliberate and predates this phase: a global error boundary replaces the
+  root layout and renders its own `<html>` and `<body>`, and it is the screen
+  that has to work when a component module is what broke. Routing it through
+  `Button` would pull `@radix-ui/react-slot` and `class-variance-authority` into
+  the one boundary whose whole job is to have no dependencies. It carries no hex,
+  only `var(--primary)` and `var(--foreground)`. **Severity: informational.**
+  Shortest fix if the rule is meant literally: import `Button` there and accept
+  the two extra modules.
+- **`app/icon.svg` carries four hex literals.** It is on the never touch list in
+  `CLAUDE.md`, it is an asset rather than a component style, and the design rule
+  it would otherwise break is about components. Recorded rather than fixed.
+- **Two em dashes still survive in `components/standing-plan-console.tsx`,** at
+  the "no value yet" glyph in `Stat` and in `CountdownRing`. Both predate this
+  phase, both are a glyph rather than punctuation in a sentence, and the
+  countdown one is on camera in the recorded demo. Unchanged, as in Phase 5.
+- **Line numbers in `README.md` were recomputed.** The three rewires in
+  `components/standing-plan-console.tsx` moved `QueueStrip` to `:939` and
+  `CountdownRing` to `:1301`, and both citations in `README.md` were corrected.
+  The citations inside sections 10 and 11 of this file were left alone: they are
+  a record of where something was read at the time, and rewriting them would
+  make that history wrong.
+- **Nothing was cut.** The cut protocol lists the eyebrows and console intro
+  first, the `Separator` rewiring second and the preview's ledger rows third. All
+  three landed.
+
+### Files changed
+
+Added: `components/ui/alert.tsx`, `components/ui/skeleton.tsx`,
+`components/ui/separator.tsx`, `components/console-preview.tsx`,
+`components/proof-panel.tsx`, `.farm-commits.json`.
+
+Changed: `app/page.tsx`, `app/console/page.tsx`, `app/console/loading.tsx`,
+`components/standing-plan-console.tsx`, `components/site-footer.tsx`,
+`DEMO.md`, `README.md`, `CLAUDE.md`, `HANDOFF.md`.
+
+Deleted: the local `Block` helper inside `app/console/loading.tsx`, replaced by
+`Skeleton` with every height and width class kept byte identical. No file was
+deleted. Nothing under `public/`, `contracts/`, `fixtures/`, `lib/tx.ts`,
+`lib/dreamdex.ts`, `lib/markets.ts`, `lib/rpc.ts` or `lib/adapters/` was touched,
+`app/icon.svg` and `app/opengraph-image.png` are untouched, there is no
+`app/opengraph-image.tsx`, and there are still two page routes and four API
+routes. `components/site-header.tsx` was read and not edited.
+
+### Commands run
+
+None, this phase had no command access. Not `npm install`, not `npm run build`,
+not `npm run seed`, not `npm run demo:reset`, not `npm run test:contracts`, not
+`forge build`, not `forge test`, not a single RPC call.
+
+What the runner should run, in order:
+
+```bash
+npm install            # dependencies are unchanged, this should be a no-op
+npm run build          # must pass with zero TypeScript errors
+npm run seed           # twice, fixtures/seed-manifest.json must be identical
+npm run test:contracts # unchanged this phase, nothing under contracts/ moved
+```
+
+Then redeploy to the same Vercel project so `https://perennis-app.vercel.app`
+does not move, and walk the stranger test:
+
+1. Cold private window on `/`. The console preview must be visible without
+   scrolling on a laptop, and "Write a standing plan" must be the only filled
+   button in that view.
+2. The same page at 360px, 768px and 1280px: no horizontal page scroll, the hero
+   stacks to one column below `lg` with the preview under the CTA, and the proof
+   panel rows wrap rather than pushing sideways.
+3. `/#proof` from the console intro link, then click each configured address and
+   confirm it opens the Shannon explorer on that address. With an empty
+   `.env.local` all three rows should read "not configured in this deployment"
+   and there should be no link to click.
+4. `GET /api/health` from the proof panel link.
+5. `/console` with `ADAPTER_MODE` unset, to confirm the fixture path renders
+   exactly what it rendered before: the source note strip, the plan error list
+   and the loading skeleton all changed component, not appearance.
+6. Lighthouse performance and accessibility, both 80 or above.
+
+Before any on chain step the pre-funded wallet (`FARM_EVM_PRIVATE_KEY`) needs
+STT for gas on chain 50312 plus roughly 0.05 STT of subscription funding, and
+tUSDC through `faucet(uint256)` on
+`0x70a86D8842FB63C4Ad2b7cdddF530eBf1BB25d8E`. Faucets:
+`https://cloud.google.com/application/web3/faucet/somnia/shannon`,
+`https://stakely.io/faucet/somnia-testnet-stt`, thirdweb, or the Somnia Discord
+`#dev-chat`. After the deploy, `forge script script/Smoke.s.sol` with
+`DEPLOYED_CONTRACT` and `COLLATERAL_TOKEN` exported, and its hash into
+`EVIDENCE.md` row 9.
+
+### Acceptance gate, honestly
+
+Met, by reading the files:
+
+- `components/ui/alert.tsx` exports `Alert`, `AlertTitle`, `AlertDescription`
+  and `alertVariants` with `role="alert"` on the root and `cva` variants
+  `default` and `warning` mapped to `--border`, `--card` and `--warning`.
+  `components/ui/skeleton.tsx` exports `Skeleton`
+  (`animate-pulse rounded-md bg-secondary`, merged with `cn()`).
+  `components/ui/separator.tsx` exports `Separator` with an `orientation` prop
+  defaulting to horizontal and `bg-border`.
+- Each of the three is imported by at least one rendered component: `Alert` at
+  `components/standing-plan-console.tsx:6` and used twice (the `sourceNote`
+  strip and the plan error list), `Skeleton` in `app/console/loading.tsx`,
+  `Separator` in `components/standing-plan-console.tsx`,
+  `components/site-footer.tsx` and `components/console-preview.tsx`.
+- `app/console/loading.tsx` contains no `function Block`, and every height and
+  width class in that skeleton is the one it had before.
+- `components/console-preview.tsx` has no `"use client"`, no `useState`, no
+  `Date.now()` and no `Math.random()`. `app/page.tsx` imports `ConsolePreview`
+  and renders it inside the hero grid.
+- The hero holds exactly one `<Button`, with the default variant, wrapping a
+  `Link` to `/console`, which is `DEMO.md` step 1.
+- `components/proof-panel.tsx` imports from `@/lib/config` and from nothing else
+  under `lib/`. `app/page.tsx` renders `<ProofPanel` inside a section with
+  `id="proof"` and `scroll-mt-20`, and it is the last section before the footer.
+- `DEMO.md` has a step starting `9.` and a `| 9 |` row naming
+  `components/proof-panel.tsx` and `lib/config.ts`. Steps 1 to 8 are byte
+  identical.
+- A grep for `text-5xl|text-7xl|font-black` across `app/` and `components/`
+  returns nothing. Every `h1` is `text-4xl sm:text-6xl` (landing) or
+  `text-2xl sm:text-3xl` (console), every `h2` is `text-2xl sm:text-3xl`, and
+  every landing `h3` is `text-base font-medium`.
+- A grep for `target="_blank"` across `app/` and `components/` returns thirteen
+  hits and every one is followed by `rel="noopener noreferrer"`.
+- Every landing section is `mx-auto max-w-6xl px-6` with `py-20 sm:py-24`, and
+  every landing `h2` has an eyebrow above it.
+- `app/console/page.tsx` intro is two sentences.
+- `components/site-header.tsx` still renders `/brand/logo.png` and `/logo.svg`.
+  `app/icon.svg` and `app/opengraph-image.png` exist, there is no
+  `app/opengraph-image.tsx`, and `public/illustrations/roll-loop.svg` and
+  `window-grid.svg` are both still imported by a rendered component
+  (`app/page.tsx`, and `roll-loop.svg` also by `VaultEmptyState`).
+- `fixtures/event-windows.json` and `fixtures/vaults.json` are unchanged, so the
+  console is still non-empty with an empty `.env.local`.
+- `contracts/script/Smoke.s.sol:68` still reads `vm.envAddress("DEPLOYED_CONTRACT")`.
+- Phase 5 wallet hygiene holds. `eth_requestAccounts` appears once, at
+  `lib/tx.ts:261` inside `connectWallet()` (plus one mention in a comment at
+  `lib/wallet-state.ts:27`). No `eth_sign` and no `personal_sign` anywhere.
+  `TransactionPreview` is still rendered at the top of the plan card's
+  `CardContent`, before every write control in source order: only its internal
+  divider changed from `border-t border-border pt-3` to a `Separator`.
+- `.farm-commits.json` parses as an array of five `{ "message", "files" }`
+  objects.
+- `README.md` contains `#proof` in the on chain proof row, and `CLAUDE.md` names
+  `alert`, `skeleton` and `separator`.
+
+Not met, or not checkable from here:
+
+- **The bare `<button>` in `app/global-error.tsx:34`.** Deliberate, reasoned
+  above, and the one place the primitive rule is knowingly not met.
+- **Four hex literals in `app/icon.svg`.** A frozen asset on the never touch
+  list.
+- **Nothing was compiled.** `npm run build` is unverified. The highest risk
+  items in this diff are the two new imports in
+  `components/standing-plan-console.tsx` and the typed literal arrays in
+  `components/console-preview.tsx`.
+- **Every claim about how any of this renders, at any width, is read and not
+  seen.** No browser was opened. The stranger test, the Lighthouse numbers and
+  the "visible without scrolling" claim in step 1 above are all the runner's.
+
+### Open questions for the human
+
+1. **The preview's numbers are frozen copies of Vault 02.** If
+   `fixtures/vaults.json` is ever edited, `components/console-preview.tsx` has
+   to be edited in the same commit or the hero will show a story the console
+   does not tell. `scripts/seed.mjs` does not guard this. Worth a line in that
+   script, or worth accepting as a comment in the component (which is what it
+   has today).
+2. **Should `/#proof` also be a header link?** It is in the console page intro
+   today, because a third header link makes the 360px header wrap by default.
+   Say if you want the header link instead and the intro one dropped.
+3. **The proof panel shows three addresses and no subscription id.**
+   `EVIDENCE.md` rows 7 and 8 name the BinaryMarketsModule and the subscription
+   id. The module is on the panel, the subscription id is not, because nothing
+   in `lib/config.ts` holds it. Confirm that is the right cut.
+4. **The closing CTA is filled and the two mid page CTAs are outlined.** Confirm
+   that reads right on a real screen, since nobody has seen it.
+
+### Next best step for Phase 9
+
+The scene pass, then the recording. Everything that can be done without a shell
+on this surface is done: the landing page shows the product, the proof panel
+exists and `DEMO.md` runs 1 to 9. What is left is what no shell-less session can
+produce. Deploy the vault, fill `EVIDENCE.md`, set
+`NEXT_PUBLIC_CONTRACT_ADDRESS` and `NEXT_PUBLIC_BINARY_MARKETS_MODULE` so the
+proof panel stops saying "not configured in this deployment", then record
+`VIDEO.md` against a real window boundary with the whole wallet flow on screen,
+including the connect dialog and the approval popup with its exact amount.
+Section 11 of this file explains why the MetaMask or Blockaid warning should be
+expected on a fresh `*.vercel.app` domain and why the video has to cover the
+wallet flow rather than assume a judge will connect cold.
