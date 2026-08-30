@@ -5,6 +5,9 @@ import { getAdapter } from "@/lib/adapters";
 // Config, not chain code. Importing the explorer base from lib/config.ts rather
 // than from lib/dreamdex.ts keeps viem out of this page's module graph.
 import { EXPLORER_URL } from "@/lib/config";
+// Display form of a note. lib/errors.ts imports nothing, so this costs the page
+// nothing and keeps the machine code where it belongs: on GET /api/health.
+import { noteHint } from "@/lib/errors";
 
 // Reads happen per request rather than at build time, so a deployed vault
 // address shows live state instead of whatever was true when it built.
@@ -25,6 +28,7 @@ export default async function ConsolePage() {
   ]);
 
   const note = vaults.note ?? windows.note ?? decimals.note;
+  const sourceNote = note ? noteHint(note) : undefined;
   const source =
     windows.source === "chain" && vaults.source === "chain" ? "chain" : "seed";
 
@@ -58,7 +62,7 @@ export default async function ConsolePage() {
         windows={windows.data}
         initialVaults={vaults.data}
         source={source}
-        sourceNote={note}
+        sourceNote={sourceNote}
         decimals={decimals.data}
         explorerBase={EXPLORER_URL}
       />

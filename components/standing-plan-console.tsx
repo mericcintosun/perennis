@@ -390,10 +390,15 @@ export function StandingPlanConsole({
             explorer, so the claim on screen is one click from being checked.
             With no address the badge renders alone, exactly as before. */}
         <div className="flex flex-wrap items-center gap-2">
+          {/* Three states, not two. A configured vault whose read did not answer
+              is not the same thing as a deployment with no vault at all, and the
+              old copy claimed the second whenever the first happened. */}
           <Badge variant="outline" className="font-normal">
             {source === "chain"
               ? "Live read from Shannon"
-              : "Seed data, no vault address set"}
+              : VAULT_ADDRESS
+                ? "Seed data, this read did not reach Shannon"
+                : "Seed data, no vault address set"}
           </Badge>
           {VAULT_ADDRESS ? (
             <a
@@ -414,10 +419,17 @@ export function StandingPlanConsole({
         </div>
       </div>
 
+      {/* A degraded read is a footnote, not an alarm. The console still works,
+          the badge above already says which path this render came from, and this
+          sentence says what the badge cannot: which read did not answer and
+          where the numbers under it came from. So it is set the way every other
+          aside on this page is set, under a hairline in muted text, and not in
+          the negative-token Alert, which is reserved for a vault that has
+          actually halted (see the stop-rule alert further down). */}
       {sourceNote ? (
-        <Alert variant="warning" className="mb-6">
-          <AlertDescription>{sourceNote}</AlertDescription>
-        </Alert>
+        <p className="mb-6 border-t border-border pt-3 text-xs text-muted-foreground">
+          {sourceNote}
+        </p>
       ) : null}
 
       <WalletPanel

@@ -34,6 +34,37 @@ export function failureNote(failure: CoreFailure): string {
 }
 
 /**
+ * The same note with the machine code taken off the front, for a screen.
+ *
+ * `upstream-error: ...` is exactly what an API consumer wants and exactly what a
+ * person reading a working page should not be shown: the code turns a sentence
+ * explaining that some figures came from fixtures into something that reads like
+ * a crash. The code stays on the wire, in GET /api/health and in the API routes,
+ * and this is what the console renders.
+ *
+ * A note with no code prefix passes through untouched, so this is safe to apply
+ * to any note whatever built it.
+ */
+export function noteHint(note: string): string {
+  return CODED_NOTE.exec(note)?.[1] ?? note;
+}
+
+/**
+ * Whether a note came from failureNote() rather than being a plain informational
+ * sentence. The code prefix is the discriminator, which is why failureNote() is
+ * the only thing that writes one.
+ *
+ * lib/dreamdex.ts uses this to decide which ledger notes are worth carrying up to
+ * the console: "a span was refused" belongs next to the badge, "no window has
+ * settled yet" is already what the empty ledger card says in full.
+ */
+export function isFailureNote(note: string): boolean {
+  return CODED_NOTE.test(note);
+}
+
+const CODED_NOTE = /^[a-z-]+: (.*)$/s;
+
+/**
  * Classify an unknown throw without repeating any of its text. Only the shape of
  * the error is inspected, never its message content.
  */
