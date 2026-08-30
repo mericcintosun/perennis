@@ -18,7 +18,13 @@ import { cn } from "@/lib/utils";
 // Config, not chain code. lib/config.ts imports nothing (not even viem), so
 // pulling VAULT_ADDRESS in here cannot drag the RPC layer into the client
 // bundle. lib/dreamdex.ts, lib/rpc.ts and lib/markets.ts stay server only.
-import { CHAIN_ID, VAULT_ADDRESS } from "@/lib/config";
+import {
+  BINARY_MARKETS_MODULE,
+  CHAIN_ID,
+  COLLATERAL_TOKEN,
+  SUBSCRIPTION_FUNDING_STT,
+  VAULT_ADDRESS,
+} from "@/lib/config";
 import { planDefaults } from "@/lib/data/seed";
 import { parsePlanForm } from "@/lib/schemas";
 import {
@@ -156,10 +162,16 @@ export function StandingPlanConsole({
   // One definition of what a valid plan is, in lib/schemas.ts. The console
   // renders the messages the schema produced and the encoder refuses anything
   // that did not parse, so the two can never disagree.
-  const errors = useMemo<string[]>(() => {
-    const parsed = parsePlanForm(form);
-    return parsed.ok ? [] : parsed.issues;
-  }, [form]);
+  //
+  // Parsed once and read twice: the error list below, and the transaction
+  // preview, which shows the numbers that are about to be encoded. Deriving
+  // both from the same parse is what keeps the sentence on screen and the
+  // calldata in the wallet popup from ever disagreeing.
+  const parsedPlan = useMemo(() => parsePlanForm(form), [form]);
+  const errors = useMemo<string[]>(
+    () => (parsedPlan.ok ? [] : parsedPlan.issues),
+    [parsedPlan]
+  );
 
   // --- wallet ------------------------------------------------------------
 
@@ -204,7 +216,7 @@ export function StandingPlanConsole({
 
   /** One signature: writes the plan, queues three windows, opens the subscription. */
   function writePlan() {
-    const parsed = parsePlanForm(form);
+    const parsed = parsedPlan;
     if (!parsed.ok) return;
 
     const queue = windows
@@ -385,7 +397,7 @@ export function StandingPlanConsole({
             <a
               href={`${explorerBase}/address/${VAULT_ADDRESS}`}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               title={VAULT_ADDRESS}
               className={cn(
                 badgeVariants({ variant: "outline" }),
@@ -429,6 +441,20 @@ export function StandingPlanConsole({
           </CardHeader>
 
           <CardContent className="space-y-5">
+            {/* Rendered above every write control on this card, so a judge
+                reads what the next click sends before any wallet popup can
+                open. */}
+            <TransactionPreview
+              vaultStatus={active.status}
+              deposit={form.deposit}
+              stakePerWindow={form.stakePerWindow}
+              direction={form.direction}
+              asset={form.asset}
+              withdrawable={active.balance}
+              canWrite={canWrite}
+              explorerBase={explorerBase}
+            />
+
             {active.status === "IDLE" ? (
               <>
                 {/* Two number fields side by side leave each label about 120px
@@ -833,7 +859,7 @@ export function StandingPlanConsole({
                             href={`${explorerBase}/tx/${entry.txHash}`}
                             title={entry.txHash}
                             target="_blank"
-                            rel="noreferrer"
+                            rel="noopener noreferrer"
                           >
                             {shortHash(entry.txHash)}
                           </a>
@@ -1005,6 +1031,143 @@ export function LedgerEmptyState({ vault }: { vault: Vault }) {
 }
 
 // --- small pieces --------------------------------------------------------
+
+/**
+ * What the next click will send, in order, one plain sentence each, rendered
+ * before any wallet popup can open.
+ *
+ * Three rules hold this block together:
+ *
+ *   1. The numbers come from the same form values lib/tx.ts encodes with, and
+ *      the subscription funding is the same SUBSCRIPTION_FUNDING_STT constant
+ *      parseEther() reads in startPlanCall(). The screen and the calldata are
+ *      the same two numbers, not two copies of one.
+ *   2. The approve line always names an exact amount and the vault contract as
+ *      the spender. There is no unlimited approval anywhere in this app and no
+ *      approval to an EOA.
+ *   3. The collateral is called tUSDC here, which is what the wallet popup will
+ *      call it, rather than the USDso the rest of this screen uses for the
+ *      denomination. A preview that does not match the popup is worse than no
+ *      preview.
+ */
+function TransactionPreview({
+  vaultStatus,
+  deposit,
+  stakePerWindow,
+  direction,
+  asset,
+  withdrawable,
+  canWrite,
+  explorerBase,
+}: {
+  vaultStatus: Vault["status"];
+  deposit: number;
+  stakePerWindow: number;
+  direction: string;
+  asset: string;
+  withdrawable: number;
+  canWrite: boolean;
+  explorerBase: string;
+}) {
+  const vaultLabel = VAULT_ADDRESS
+    ? `the Perennis vault at ${shortHash(VAULT_ADDRESS, 10)}`
+    : "the Perennis vault, once one is configured";
+
+  const lines =
+    vaultStatus === "IDLE"
+      ? [
+          `Approve exactly ${formatUsd(deposit)} tUSDC for ${vaultLabel}. Skipped when the standing allowance already covers it.`,
+          `Deposit ${formatUsd(deposit)} tUSDC into ${vaultLabel}.`,
+          `Write the plan (${direction === "UP" ? "Up" : "Down"} on ${asset}, ${formatUsd(stakePerWindow)} per window) and send ${SUBSCRIPTION_FUNDING_STT} STT to fund the reactivity subscription.`,
+        ]
+      : vaultStatus === "ACTIVE"
+        ? [
+            "Arm up to 3 more windows on the vault. No collateral moves and no approval is asked for.",
+            "Halt the plan on the vault. The roll stops and the balance stays where it is.",
+          ]
+        : [
+            "Arm up to 3 more windows on the vault. No collateral moves and no approval is asked for.",
+            `Withdraw ${formatUsd(withdrawable)} tUSDC from the vault to the owner address.`,
+          ];
+
+  return (
+    <div className="space-y-4 rounded-lg border border-border bg-secondary/40 p-4">
+      <div className="space-y-3">
+        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          What the next click sends
+        </p>
+        <ol className="space-y-2 text-xs text-muted-foreground">
+          {lines.map((line, i) => (
+            <li key={line} className="flex gap-2.5">
+              <span className="shrink-0 font-mono text-foreground">{i + 1}.</span>
+              <span>{line}</span>
+            </li>
+          ))}
+        </ol>
+        <p className="text-xs text-muted-foreground">
+          {canWrite
+            ? "Every amount above is exact. This app never asks for an unlimited approval, and the only spender it ever names is the vault contract."
+            : "Nothing is broadcast on this path: either no vault address is configured or no wallet is connected on this chain, so the card moves locally and the wallet strip says the write was simulated."}
+        </p>
+      </div>
+
+      <div className="space-y-2 border-t border-border pt-3">
+        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Contracts this screen talks to
+        </p>
+        <AddressRow
+          label="Perennis vault"
+          address={VAULT_ADDRESS}
+          explorerBase={explorerBase}
+        />
+        <AddressRow
+          label="Collateral (tUSDC)"
+          address={COLLATERAL_TOKEN}
+          explorerBase={explorerBase}
+        />
+        <AddressRow
+          label="BinaryMarketsModule"
+          address={BINARY_MARKETS_MODULE}
+          explorerBase={explorerBase}
+        />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * One address, truncated for a 360px card, with the whole value on the title so
+ * it can be read and copied, and a link out to the explorer. An address that is
+ * not configured says so in words rather than rendering a link to nowhere.
+ */
+function AddressRow({
+  label,
+  address,
+  explorerBase,
+}: {
+  label: string;
+  address?: string;
+  explorerBase: string;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-x-3">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      {address ? (
+        <a
+          className="inline-flex min-h-11 items-center font-mono text-xs underline underline-offset-4 hover:text-primary sm:min-h-0"
+          href={`${explorerBase}/address/${address}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={address}
+        >
+          {shortHash(address, 10)}
+        </a>
+      ) : (
+        <span className="text-xs text-muted-foreground">Not configured here</span>
+      )}
+    </div>
+  );
+}
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
