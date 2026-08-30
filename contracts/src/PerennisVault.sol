@@ -157,6 +157,10 @@ contract PerennisVault is ISomniaEventHandler {
     error InsufficientBalance();
     error QueueFull();
     error Reentrant();
+    /// startPlan over a live plan would strand the open window's outcome tokens.
+    error PlanActive();
+    /// bytes32(0) is never a market id, so a queue entry of zero is a mistake.
+    error ZeroWindowId();
 
     modifier onlyOwner() {
         if (msg.sender != owner) revert NotOwner();
@@ -186,6 +190,12 @@ contract PerennisVault is ISomniaEventHandler {
     // --- collateral ------------------------------------------------------
 
     /**
+     * Open on purpose. A stranger may fund this vault (a friend topping it up,
+     * a script refilling it) because collateral only ever leaves through
+     * withdraw and rescue, and both are onlyOwner. There is no caller supplied
+     * `from` here either: the transferFrom pulls from msg.sender and nobody
+     * else, so an outside allowance cannot be spent by a third party.
+     *
      * The single documented exception to checks, effects, interactions in this
      * contract. The tokens have to arrive before there is anything to credit,
      * so the transfer comes first by necessity. Two things make that safe: the
@@ -219,8 +229,15 @@ contract PerennisVault is ISomniaEventHandler {
      *
      * Send enough native STT with the call to fund the subscription: the owner
      * is billed for every handler run.
+     *
+     * A plan that is already Active is refused. Without that guard this call
+     * would reset the queue and run _enterNext over an open window, which
+     * overwrites openMarketId and leaves the previous window's outcome tokens
+     * with no path back to collateral: _onEvent only settles the market id it
+     * is still holding. Rewriting a live plan is halt() and then startPlan.
      */
     function startPlan(Plan calldata p, bytes32[] calldata windowIds) external payable onlyOwner {
+        if (status == Status.Active) revert PlanActive();
         if (p.stakePerWindow == 0 || p.windows == 0 || p.direction > 1) revert BadPlan();
         if (p.maxConsecutiveLosses == 0) revert BadPlan();
         if (p.takeProfit <= p.floorBalance) revert BadPlan();
@@ -258,12 +275,24 @@ contract PerennisVault is ISomniaEventHandler {
      * Because it is permissionless, both the per call size and the total queue
      * are capped. Without them a stranger could push storage into this contract
      * until the queue was too expensive to read.
+     *
+     * The trust boundary that remains, stated plainly: a stranger chooses which
+     * market ids this vault may enter next. Three things bound what that buys
+     * them. The spend per window is plan.stakePerWindow and nothing else, the
+     * marketState == 1 gate in _enterNext refuses anything that is not Trading,
+     * and the stop rules still halt the plan on the owner's terms. What a
+     * griefer can do is push the vault into markets the owner did not pick, so
+     * a vault holding money it cares about should be halted rather than left
+     * with an open queue. SECURITY.md carries this with a severity.
      */
     function armNext(bytes32[] calldata windowIds) external {
         if (windowIds.length > MAX_QUEUE_ADD) revert QueueFull();
         if (pendingWindows() + windowIds.length > MAX_PENDING) revert QueueFull();
 
         for (uint256 i = 0; i < windowIds.length; i++) {
+            // bytes32(0) is the id _enterNext uses to mean "queue empty", so a
+            // zero pushed in here would read back as a market that never was.
+            if (windowIds[i] == bytes32(0)) revert ZeroWindowId();
             _queue.push(windowIds[i]);
         }
         emit WindowsArmed(msg.sender, windowIds.length, pendingWindows());
@@ -273,6 +302,42 @@ contract PerennisVault is ISomniaEventHandler {
         status = Status.Stopped;
         stopReason = StopReason.OwnerHalt;
         emit PlanHalted(StopReason.OwnerHalt, balance);
+    }
+
+    /**
+     * The escape hatch. Sends the untracked collateral surplus and the whole
+     * native STT balance to the owner, so a wedged vault cannot wedge the money
+     * with it. It can never touch collateral that `balance` already accounts
+     * for: only the difference between what the token says this contract holds
+     * and what this contract thinks it holds is moved, so an open position and
+     * every idle deposit stay funded and withdraw() is still the only way out
+     * for those. A vault with clean accounting and no stray tokens is a no-op.
+     */
+    function rescue() external onlyOwner {
+        uint256 held = collateral.balanceOf(address(this));
+        if (held > balance) {
+            require(collateral.transfer(owner, held - balance), "transfer failed");
+        }
+
+        uint256 nativeHeld = address(this).balance;
+        if (nativeHeld > 0) {
+            (bool sent, ) = owner.call{value: nativeHeld}("");
+            require(sent, "native transfer failed");
+        }
+    }
+
+    /**
+     * Close the reactivity subscription. halt() stops the plan but leaves the
+     * subscription open, and the owner is billed for every handler run, so
+     * without this a halted vault keeps a subscription billing forever. The id
+     * is zeroed before the call, so a precompile that reverts leaves nothing
+     * half closed and a second call is a no-op rather than a double unsubscribe.
+     */
+    function stopSubscription() external onlyOwner {
+        uint256 id = subscriptionId;
+        if (id == 0) return;
+        subscriptionId = 0;
+        REACTIVITY.unsubscribe(id);
     }
 
     // --- settlement ------------------------------------------------------
@@ -303,8 +368,22 @@ contract PerennisVault is ISomniaEventHandler {
         _settleAndRoll(marketId, winningSide);
     }
 
-    function _settleAndRoll(bytes32 marketId, uint8 winningSide) private {
-        uint256 payout = markets.redeem(marketId);
+    /**
+     * Internal rather than private so the tests can reach it without a
+     * cheatcode. Nothing else changed about how it is called: _onEvent is the
+     * only path to it on chain, and it is still not part of the ABI.
+     */
+    function _settleAndRoll(bytes32 marketId, uint8 winningSide) internal {
+        // The payout is measured, not taken on trust. deposit() already credits
+        // a measured delta and this path used to credit whatever the module
+        // said it paid, so a module reporting a bigger number than it actually
+        // transferred would inflate this vault's accounting for good and the
+        // stop rules would then fire against a balance that does not exist.
+        uint256 heldBefore = collateral.balanceOf(address(this));
+        markets.redeem(marketId);
+        uint256 heldAfter = collateral.balanceOf(address(this));
+        uint256 payout = heldAfter > heldBefore ? heldAfter - heldBefore : 0;
+
         balance += payout;
         openMarketId = bytes32(0);
 
@@ -350,11 +429,36 @@ contract PerennisVault is ISomniaEventHandler {
     }
 
     /**
+     * The only two places this contract calls approve, and both check the
+     * answer. A token that returns false instead of reverting (there are
+     * several, and the collateral is external code we do not control) would
+     * otherwise leave this vault believing it had handed the markets module an
+     * allowance it never got, and the buy below would fail for a reason nobody
+     * could read off the chain.
+     *
+     * The cost of checking is that a token answering false makes _enterNext
+     * revert, which reverts the whole handler run when it is reached from
+     * _onEvent. That is the right trade: the alternative is entering a window
+     * on an allowance that does not exist. The owner can always halt() and
+     * withdraw() afterwards, so a broken token cannot trap the money.
+     */
+    function _approveExact(uint256 amount) private {
+        require(collateral.approve(address(markets), amount), "approve failed");
+    }
+
+    function _clearApproval() private {
+        require(collateral.approve(address(markets), 0), "approve failed");
+    }
+
+    /**
      * Take the next market id off the queue and buy. An empty or unusable queue
      * is not an error: the balance stays in the vault and the next armNext plus
      * settlement picks the plan back up.
+     *
+     * Internal rather than private for the same reason as _settleAndRoll: the
+     * tests reach it directly instead of standing up a reactivity precompile.
      */
-    function _enterNext() private {
+    function _enterNext() internal {
         if (_queueHead >= _queue.length) {
             emit EntrySkipped(bytes32(0), "queue empty");
             return;
@@ -375,20 +479,36 @@ contract PerennisVault is ISomniaEventHandler {
         }
 
         balance -= stake;
-        collateral.approve(address(markets), stake);
+        _approveExact(stake);
+
+        // Measured around the call, the same way deposit and _settleAndRoll
+        // measure theirs. `stake` is a maxCost and the module is free to spend
+        // less than all of it.
+        uint256 heldBefore = collateral.balanceOf(address(this));
 
         try markets.buy(next, plan.direction, stake) {
+            uint256 heldAfter = collateral.balanceOf(address(this));
+            uint256 spent = heldAfter >= heldBefore ? 0 : heldBefore - heldAfter;
+
+            // Credit the difference back. Without this the unspent remainder
+            // sits in the token contract as surplus this vault does not count,
+            // so every window would leak a little dust out of the accounting
+            // and only rescue() could ever get it back.
+            if (spent < stake) {
+                balance += stake - spent;
+            }
+
             openMarketId = next;
             // Reset on the success path too, not only in the catch. A module
             // that spends less than the full allowance would otherwise leave a
             // standing approval on this vault between windows.
-            collateral.approve(address(markets), 0);
-            emit PositionOpened(next, plan.direction, stake);
+            _clearApproval();
+            emit PositionOpened(next, plan.direction, spent);
         } catch {
             // Book was too thin or the market locked mid block. Give the stake
             // back and wait for the next window rather than stranding it.
             balance += stake;
-            collateral.approve(address(markets), 0);
+            _clearApproval();
             emit EntrySkipped(next, "order rejected");
         }
     }
@@ -433,6 +553,8 @@ contract PerennisVault is ISomniaEventHandler {
         return _rolls[index];
     }
 
-    /// Native STT sent here tops up the subscription's gas budget.
+    /// Native STT sent here tops up the subscription's gas budget. Open on
+    /// purpose, and it moves no collateral and touches no plan state: rescue()
+    /// is the only way native back out, and it is onlyOwner.
     receive() external payable {}
 }
