@@ -28,6 +28,10 @@ const links = [
     label: "Shannon explorer",
     href: "https://shannon-explorer.somnia.network",
   },
+  {
+    label: "Event Contracts Hackathon",
+    href: "https://dorahacks.io/hackathon/event-contracts",
+  },
 ];
 
 export function SiteFooter() {
@@ -55,9 +59,9 @@ export function SiteFooter() {
 
       <div className="mx-auto max-w-6xl px-6 pb-8">
         <p className="text-xs text-muted-foreground">
-          Testnet software on Somnia Shannon (chain {CHAIN_ID}) with tUSDC as
-          collateral, unaudited, with no upgrade path. Contract addresses are in
-          the{" "}
+          Built for the Event Contracts Hackathon. Testnet software on Somnia
+          Shannon (chain {CHAIN_ID}) with tUSDC as collateral, unaudited, and
+          with no upgrade path. The contract addresses are in the{" "}
           <a className="underline underline-offset-4 hover:text-foreground" href="/#proof">
             proof panel
           </a>
