@@ -2691,3 +2691,169 @@ canonical list; this is the Phase 9 ordering of it with the deadline attached.
    clean.
 10. **Submit the BUIDL on DoraHacks before 8 September 2026, 18:00 UTC,** with
     the video uploaded at least 12 hours earlier.
+
+# 14. QA round 1 record, the live crawl fix pass
+
+A headless browser crawled `https://perennis-app.vercel.app` and came back with
+one finding, on `/console`:
+
+> `visible` — upstream-error: The Shannon RPC rejected the read, so this screen
+> fell back to seed data.
+
+Rendered as a full width red banner directly under the vault switcher, above
+every card on the page. The screenshot is `qa-2.png` in the crawl export.
+
+## The finding, and what actually caused it
+
+The banner is not the bug. It is the symptom of a request this repo was sending
+that the Shannon endpoint would never have served, plus a presentation decision
+that painted the resulting notice as an alarm.
+
+**Root cause: a single unchunked `eth_getLogs` over 50,000 blocks.**
+
+`fetchRollLedger()` in `lib/dreamdex.ts` asked for the whole ledger lookback in
+one call:
+
+```ts
+const fromBlock = latest - LEDGER_LOOKBACK_BLOCKS;   // 50_000n
+const logs = await withTimeoutAndRetry(() =>
+  client.getLogs({ address, event: rollSettledEvent, fromBlock, toBlock: "latest" })
+);
+```
+
+Public JSON-RPC endpoints cap the block span of a single `eth_getLogs` and answer
+a wider request with a rejection rather than a truncated result. `dream-rpc.somnia.network`
+is a public endpoint. So this call failed, deterministically, on every render:
+not a flaky provider, not a rate limit, a request shape the endpoint does not
+serve. `withTimeoutAndRetry()` then re-sent the identical request with no pause,
+got the identical rejection, and threw. `seedFallback()` caught it and produced
+the note.
+
+The chain of custody from there is what put a red banner over a working console:
+
+1. `fetchRollLedger()` returned `source: "seed"` with the note.
+2. `fetchVaults()` succeeded on its own reads — `snapshot()` and `plan()` are
+   plain `eth_call`s and were always answered — and carried the ledger's note up
+   with its own `source: "chain"` response.
+3. `app/console/page.tsx` took `vaults.note` and passed it through unchanged,
+   including the `upstream-error:` machine prefix.
+4. `StandingPlanConsole` rendered it in `<Alert variant="warning">`, which this
+   product paints with `--negative` because there is no amber token.
+
+That is why the page showed **"Live read from Shannon"** and a red **error**
+banner at the same time. Both were true and they read as a contradiction: the
+vault state was live, the ledger underneath it was fixtures, and nothing on
+screen said which was which.
+
+## What changed
+
+**The request.** `scanRollLogs()` in `lib/dreamdex.ts` walks the lookback
+backwards in `LEDGER_CHUNK_BLOCKS` (1,000) spans, newest first, and no single
+`eth_getLogs` ever asks for more than that. It stops as soon as it holds
+`MAX_LEDGER_ROWS` rows, so a vault that settles regularly is done after one call;
+the full walk is the empty vault case and `LEDGER_SCAN_BUDGET_MS` (3s, checked
+before a span is issued rather than after it returns) keeps that off the render
+budget. `LEDGER_LOOKBACK_BLOCKS` is now derived as `CHUNK * MAX_CHUNKS` = 10,000
+so the span size and the walk length cannot drift apart.
+
+A span the endpoint refuses no longer sinks the ledger: the rows already
+collected from newer spans are kept, the walk records that it is incomplete, and
+only a walk where *nothing* answered throws. That last case is a genuine upstream
+failure and is the only one that now reaches the fixtures.
+
+10,000 blocks that are actually read beats 50,000 that are never served. This is
+a real reduction in lookback depth and it is deliberate.
+
+**Resilience around it.** `withTimeoutAndRetry()` now pauses
+`RPC_RETRY_BACKOFF_MS` before the retry — re-sending the same request in the same
+millisecond is the one thing that cannot help a 429 or a 503.
+`NEXT_PUBLIC_SOMNIA_RPC_FALLBACK_URLS` (optional, comma separated, documented in
+`.env.example`, empty by default) adds standby endpoints behind viem's `fallback`
+transport. The client is built once instead of per call, and every `http()` is
+pinned to `retryCount: 0` so the rule at the top of `lib/rpc.ts` still holds:
+there is exactly one retry loop and it is ours. viem's default of 3 would have
+been a second and third loop underneath it.
+
+**A short lived read cache.** `remember()` / `recentValue()` in `lib/rpc.ts`,
+`CHAIN_CACHE_TTL_MS` = 45s. A read the endpoint refuses now serves the last good
+value instead of dropping a console that had live numbers twenty seconds ago
+down to fixtures. The fixture path is what is left when there is nothing recent,
+which on a cold serverless instance is the first refused read.
+
+That cache does not fake a live read. When it serves, the response keeps
+`source: "chain"` — the rows did come off Shannon — and gains a note saying the
+figures are the last reading Shannon returned rather than this one.
+
+**The judge-visible surface.** Three changes, none of them to a token, a font, a
+radius or a layout decision in `IDENTITY.md`:
+
+- The note is no longer an `Alert`. It is a `<p>` under a `border-t` hairline in
+  `text-xs text-muted-foreground`, set the way every other aside on that page is
+  set. The `warning` variant is untouched and still used, further down, for a
+  vault that has actually halted — which is what a negative token is for.
+- `noteHint()` in `lib/errors.ts` strips the `upstream-error:` prefix before the
+  console renders it. The code stays on the wire for `GET /api/health` and the
+  API routes, where it is the useful part; `failureNote()` is unchanged.
+- The hints themselves were rewritten. "The Shannon RPC rejected the read, so
+  this screen fell back to seed data" is now "Shannon did not return the roll
+  ledger on this read, so the figures below come from the fixture set" — it names
+  *which* read did not answer, which is what reconciles the sentence with the
+  "Live read from Shannon" badge above it.
+- The badge had a third state it was not rendering: a configured vault whose read
+  did not answer was being labelled "Seed data, no vault address set", which was
+  false whenever `NEXT_PUBLIC_CONTRACT_ADDRESS` was set. It now says "Seed data,
+  this read did not reach Shannon" in that case.
+
+**Logging.** `logCoreWarn()` in `lib/log.ts` uses `console.warn`. Every degraded
+path — a refused span, a cached value served, a read that fell back — logs
+through it. Nothing on this path uses `console.error`, because nothing on it
+leaves the app broken.
+
+## QA: external findings
+
+**None in round 1.** The one finding was caused by a request this repo controls
+and is fixed here. It is not a provider outage and it is not a third-party block:
+`dream-rpc.somnia.network` was answering `eth_call` throughout — that is why the
+vault snapshot rendered live — and it was only the log range that was refused.
+
+## What this session could NOT verify
+
+**Nothing was run.** This session had no shell and no network: `npm run build`,
+`tsc --noEmit` and every RPC probe were all unavailable, and the live
+`/api/health` could not be fetched. Specifically unverified:
+
+1. **That 1,000 is under the endpoint's actual cap.** It is the common published
+   cap and the previous 50,000 was certainly over it, but the exact limit on
+   `dream-rpc.somnia.network` was not read from the endpoint. If the next crawl
+   still shows a fallback notice on `/console`, lower `LEDGER_CHUNK_BLOCKS` in
+   `lib/config.ts` to `500n` and re-deploy — that is a one constant change and
+   the walk needs nothing else.
+2. **That `eth_getLogs` was the failing call**, rather than the `getBlockNumber()`
+   above it. It is the only conclusion the code supports — everything else inside
+   that `try` is either wrapped in `Promise.allSettled` or has its own `.catch`,
+   and the two `eth_call`s in `fetchVaults()` were demonstrably answered — but it
+   was inferred by reading, not observed. The backoff, the fallback list and the
+   cache all help regardless of which of the two it was.
+3. **The type of `RollLog`**, which is inferred from viem's `getLogs` return
+   rather than written out. If `tsc` complains there, the fix is to widen it, not
+   to change the walk.
+
+The next crawl is the test. `GET /api/health` reports `rollLedgerSource`, which
+is the single field that answers whether this worked: `"chain"` means the walk is
+being served, `"seed"` means it is not.
+
+## Files changed
+
+Changed: `lib/config.ts`, `lib/rpc.ts`, `lib/dreamdex.ts`, `lib/errors.ts`,
+`lib/log.ts`, `lib/markets.ts`, `app/console/page.tsx`,
+`components/standing-plan-console.tsx`, `.env.example`, `.farm-commits.json`,
+`HANDOFF.md`.
+
+Added: nothing.
+
+Deleted: nothing. No token, font, radius, keyframe or layout decision in
+`IDENTITY.md` was touched. Nothing under `contracts/`, `public/`, `fixtures/`,
+`lib/tx.ts`, `lib/vault.ts`, `lib/wallet-state.ts` or `lib/adapters/` was
+touched, so the Phase 5 wallet decisions are untouched by construction: no new
+prompt, no loosened approval, no auto-connect, and `eth_requestAccounts` still
+appears exactly once, in `connectWallet()`.
