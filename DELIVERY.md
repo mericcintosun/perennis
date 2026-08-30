@@ -67,12 +67,15 @@ The first three items are gates. A jury panel already scored this submission dow
 for a live link that did not answer and a video field that was a placeholder, so
 none of the three goes on the form on trust.
 
-1. **The live URL has to answer before it goes on the form.** Open it in a
-   private window, on the production deployment and not a preview URL, and
-   confirm `/console` renders with the header badge reading what you expect for
-   the `ADAPTER_MODE` you deployed. Only then paste it into DoraHacks and into
-   the Demo table at the top of `README.md`. A link that does not load costs
-   points on three criteria at once.
+1. **The live URL has to answer before it goes on the form.** A probe on
+   30 August 2026 got 200 back from `https://perennis-app.vercel.app` in 298 ms,
+   and the URL is now in the Demo table at the top of `README.md` and in the
+   "Live demo link" block in `SUBMISSION.md`. That probe is a dated reading of
+   one moment and it does not retire this gate: open the URL again in a private
+   window, on the production deployment and not a preview URL, and confirm
+   `/console` renders with the header badge reading what you expect for the
+   `ADAPTER_MODE` you deployed. A link that does not load costs points on three
+   criteria at once.
 2. **The video URL has to come from a recorded take of `VIDEO.md`.** Record the
    90 second shot list in that file, one unbroken take, and check the four bands
    are all on camera. Confirm it is 2 to 3 minutes as the form asks (the 90

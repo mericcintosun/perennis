@@ -10,12 +10,13 @@ Two rows go with one submission and there is no second form to fill in. The
 tracks are at the bottom of this file, with headings byte identical to
 `DELIVERY.md`.
 
-The two blocks below that read `PENDING` are gates. The placeholder is one
-string, byte identical to the one in the Demo table in `README.md`, and it
-appears exactly twice in each file: "Demo video link" and "Live demo link" here,
-the live app row and the demo video row there. All four are replaced in the same
-sitting, because a jury panel has already scored this submission down once for a
-live link that did not answer and a video field that was a placeholder.
+One block below still reads `PENDING`, and it is a gate. "Live demo link" was
+filled in on 30 August 2026, when the deployment answered a probe with 200 in
+298 ms, so two of the original four placeholder copies are gone. The one that
+remains is "Demo video link" here and the demo video row in the Demo table in
+`README.md`: one string, byte identical in both files, two hits in the
+repository. Both are replaced in the same sitting, because two jury panels have
+now scored this submission down for a video field that was a placeholder.
 
 ---
 
@@ -84,12 +85,15 @@ deadline, and check that the link plays in a private window before it goes here.
 ## Live demo link
 
 ```
-PENDING, filled by a human before submitting
+https://perennis-app.vercel.app
 ```
 
-The intended target is `https://perennis-app.vercel.app`. It goes on the form
-only after `/console` renders in a cold private window on the production
-deployment, not a preview URL.
+The deployment answered a probe with 200 in 298 ms on 30 August 2026. That is a
+dated observation, not a standing guarantee: the private window check is still
+the paste gate, so open `/console` on the production deployment (not a preview
+URL) in a cold private window before this line goes on the form. The console
+lives at `https://perennis-app.vercel.app/console`, which is the link worth
+giving a judge who has two minutes.
 
 ## Tech stack
 
@@ -146,6 +150,21 @@ checking the repository finds the same story:
 - `EVIDENCE.md` carries one row per on chain artefact. A row that has not been
   filled in says `NOT YET FILLED` rather than a plausible looking hash. Every
   row must be filled before this form is submitted.
+
+Two known gaps, dated, so a judge reading this file knows what is missing before
+they go looking for it:
+
+- **No on chain artefact exists yet.** As of 30 August 2026, rows 1, 2, 3, 4, 5,
+  7, 8 and 9 of `EVIDENCE.md` all read `NOT YET FILLED`. They are filled from a
+  real deploy on Shannon (chain 50312) before this form is submitted, and row 4,
+  one `RollSettled` produced by a validator, is the one the whole submission
+  rests on. Until then the contract is verifiable by reading
+  `contracts/src/PerennisVault.sol` and running `npm run test:contracts`, not by
+  clicking an explorer link.
+- **No demo take has been recorded.** As of 30 August 2026, `VIDEO.md` is the
+  shot list for the recording, second banded to a 2:20 cut. It is a script and
+  not a recording, and the "Demo video link" block above still reads `PENDING`
+  because of it.
 
 ## Before you paste anything
 
