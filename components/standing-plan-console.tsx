@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge, badgeVariants } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
 import { WalletPanel } from "@/components/wallet-panel";
 import { cn } from "@/lib/utils";
 // Config, not chain code. lib/config.ts imports nothing (not even viem), so
@@ -413,9 +415,9 @@ export function StandingPlanConsole({
       </div>
 
       {sourceNote ? (
-        <p className="mb-6 rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning">
-          {sourceNote}
-        </p>
+        <Alert variant="warning" className="mb-6">
+          <AlertDescription>{sourceNote}</AlertDescription>
+        </Alert>
       ) : null}
 
       <WalletPanel
@@ -542,11 +544,15 @@ export function StandingPlanConsole({
                 </div>
 
                 {errors.length > 0 ? (
-                  <ul className="space-y-1 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
-                    {errors.map((e) => (
-                      <li key={e}>{e}</li>
-                    ))}
-                  </ul>
+                  <Alert variant="warning">
+                    <AlertDescription>
+                      <ul className="space-y-1">
+                        {errors.map((e) => (
+                          <li key={e}>{e}</li>
+                        ))}
+                      </ul>
+                    </AlertDescription>
+                  </Alert>
                 ) : null}
 
                 {/* Bound to the wallet state, never to a timer. While a
@@ -1111,7 +1117,9 @@ function TransactionPreview({
         </p>
       </div>
 
-      <div className="space-y-2 border-t border-border pt-3">
+      <Separator />
+
+      <div className="space-y-2">
         <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
           Contracts this screen talks to
         </p>

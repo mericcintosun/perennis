@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { Separator } from "@/components/ui/separator";
 // Config, not chain code. lib/config.ts imports nothing, so naming the deployed
 // addresses in the footer cannot pull the RPC layer into this module graph.
 import {
@@ -64,7 +65,8 @@ export function SiteFooter() {
         page sideways. An address that is not configured says so in words: the
         deployed values live in EVIDENCE.md and are filled in by a human.
       */}
-      <div className="border-t border-border">
+      <Separator />
+      <div>
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-6 py-6 text-xs text-muted-foreground">
           <p className="font-medium uppercase tracking-wider">About and security</p>
           <p className="max-w-[70ch]">
