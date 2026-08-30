@@ -1991,3 +1991,306 @@ including the connect dialog and the approval popup with its exact amount.
 Section 11 of this file explains why the MetaMask or Blockaid warning should be
 expected on a fresh `*.vercel.app` domain and why the video has to cover the
 wallet flow rather than assume a judge will connect cold.
+
+---
+
+## 13. Phase 9 record, the scene pass and the submission package
+
+### Goal
+
+Two halves. The landing page was correct and text walled, so the first half
+turns it into a composed scene: a masked hero, a brand set, a motion system with
+a reduced motion guard, and two things a judge can actually click before opening
+`/console`. The second half writes the files the DoraHacks form eats, because an
+unsubmittable beautiful site scores zero.
+
+**No new `DEMO.md` step.** Steps 1 to 9 keep their numbers and their meaning.
+Only the body of step 8 moved: the landing page stops being a closing frame made
+of paragraphs and becomes the opening frame of the recorded cut, with a tab
+stepper and three stat tiles. The `| 8 |` dependency row now also names
+`components/loop-stepper.tsx` and `components/brand/marks.tsx`.
+
+The wow moment is unchanged: the countdown ring reaches zero, nobody clicks, no
+wallet dialog opens, and the vault card redeems and re-enters itself.
+
+### The six offenses, and the slice that closed each
+
+This list came in with the phase brief. It is copied here so the AFTER
+screenshots can be compared against it row by row, and no seventh was invented.
+
+| # | Offense, as it stood | Closed by |
+| --- | --- | --- |
+| 1 | `/brand/og.png` rendered with `fill` and `object-cover` across the whole hero, running under the headline and the lead paragraph with only a bottom gradient. | Slice 1. It is now inside an `aria-hidden` wrapper that is `hidden lg:block` and pinned to `inset-y-0 right-0 w-[48%]`, and the `Image` itself carries both `hidden lg:block` and a `mask-image` that fades to zero at 72 percent toward the text column. Nothing decorative shares a bounding area with a sentence. |
+| 2 | `#how` was three stacked prose blocks from a `steps` array, each body two sentences, plus a decorative SVG in an `lg` only column. | Slice 4. `components/loop-stepper.tsx` replaces the array with three tabs, each one mark, one sentence and one mono trace line. The `steps` array is gone from `app/page.tsx`. |
+| 3 | "What Perennis is not" was three cards with 40 to 60 word bodies (`comparisons`). | Slice 5. The array is gone. Its three bodies are inside the single `<details>`, folded. |
+| 4 | "What is running today" was four cards and eight paragraphs (`shipped`), the densest wall on the page. | Slice 5. The array is gone. Three stat tiles carry the section and the prose is condensed into one paragraph inside the same `<details>`. |
+| 5 | The hero stat strip was sans and generic ("Same block"), and the headline named the behavior instead of making a claim. | Slice 1. The headline is "Hold a view for **four hours**, sign once" with one `text-primary` span, and the strip is `font-mono` with four checkable facts, two of them sourced from `@/lib/config`. |
+| 6 | The footer carried a risk paragraph, two address rows and six links. | Slice 5. Five links plus one sentence. `FooterAddress` is deleted and the addresses live only on the proof panel. |
+
+### Status
+
+Written, not executed. Nothing in this session was run: no `npm install`, no
+`npm run build`, no `npm run seed`, no `forge build`, no `forge test`, no RPC
+call, no dev server, no browser at any width. There was no shell. Every claim
+about how any of this renders is a reading of class names, not an observation.
+
+**Still mocked, unchanged by this phase.** This phase touched no chain code, so
+the list is exactly what Phase 5 left and Phase 8 carried forward:
+`resolveWindow()`, `settleAndRoll()` and `syntheticTxHash()` in `lib/vault.ts`,
+`toBytes32()` in `lib/markets.ts` and in `lib/tx.ts`, `DEMO_WINDOW_SECONDS = 20`
+in `components/standing-plan-console.tsx`, and the SDK response shape in
+`types/somnia-markets-sdk.d.ts`.
+
+### Decisions
+
+- **Meshy to inline SVG, and the fence lift that needed.** The phase template
+  asked for five brand rasters generated with a Meshy tool. There is no such
+  tool on this machine and `public/` is on the never touch list in `CLAUDE.md`,
+  so the phase granted a named and narrow lift: the brand set ships as hand
+  authored inline SVG React components in a new `components/brand/` directory
+  instead. No binary asset was added or downloaded, nothing under `public/` was
+  written, and `.farm-assets.json` was not created. The five marks are
+  `RollLoopMark`, `PlanMark`, `SettlementMark`, `StopRuleMark` and `QueueMark`,
+  one 48 by 48 viewBox, stroke width 2, corner radius 3, every stroke
+  `currentColor` and no hex literal in the file. This lift is spent: a sixth
+  mark or a raster asset is a new ask.
+- **Marks are decorative by default and named only when they replace words.**
+  `markProps()` sets `aria-hidden` unless a `title` prop is passed, in which case
+  it becomes `role="img"` with a `<title>`. The three stepper panels pass a
+  title, because the mark sits where a paragraph used to. The hero mark and the
+  queue mark do not.
+- **Tabs rather than an accordion for the stepper.** The panel is fixed height
+  content, so a judge can flick between all three without the page reflowing
+  under them. Arrow keys, Home and End move between tabs and focus follows,
+  which is the tablist pattern. Focus moves by `document.getElementById` on the
+  ids already set for `aria-controls`, not a ref array, because `Button` is a
+  plain function component and threading a ref through it added nothing.
+- **The stepper's trace lines are shapes, not captures.** They are written like
+  the calls in `contracts/src/PerennisVault.sol` and truncated for width. The
+  component says so in its header comment, because a mono line that looks like
+  output invites a judge to treat it as output. Real hashes are in
+  `EVIDENCE.md`, the real ledger is on `/console`.
+- **Motion is four keyframes and one reveal pair, and every helper class is
+  named after its keyframe.** `.fade-up`, `.float`, `.glow-pulse`,
+  `.caret-blink`, plus `.reveal` / `.reveal-in`. Naming them identically is what
+  makes the `prefers-reduced-motion: reduce` block at the bottom of
+  `app/globals.css` auditable at a glance: it lists all five plus the older
+  `.pulse-dot`, sets `animation: none` on each, and then sets `opacity: 1` and
+  `transform: none` on everything that starts hidden. Nothing on the page depends
+  on an animation to be readable.
+- **Stagger is a custom property, not a ladder of delay classes.** A component
+  writes `style={{ "--delay": "160ms" }}` and `animation-delay` reads it. The
+  hero runs 0, 80, 160, 200, 240, 320ms.
+- **`components/reveal.tsx` adds a class, it never gates markup.** The children
+  are in the server HTML either way, so a crawler, a reader mode and a browser
+  with JavaScript off all see the full text of every section it wraps. It
+  observes once, adds `reveal-in` on first intersection and calls `disconnect()`.
+  There is no scroll listener.
+- **`ConsolePreview` stayed a server component.** The two ledger rows became
+  `next/link` links into `/console` with a hover background and an arrow that
+  translates on hover. `next/link` needs no `"use client"` and there is no
+  handler in that file, so the hero still ships zero JavaScript of its own apart
+  from the two client leaves (`Reveal`, `LoopStepper`) and the copy chip lower
+  down.
+- **`CopyChip` says "Copied" in words.** An icon that changes shape says nothing
+  to a screen reader and almost nothing to a person who was not watching that
+  corner of the screen, so the label is text and the same word goes into a
+  polite live region. It fails silently: `navigator.clipboard` is undefined on
+  an insecure origin and `writeText` rejects on an unfocused document, and
+  neither is worth an error state when the value is on screen next to the chip.
+- **Both new interactive controls go through `components/ui/button.tsx`.** The
+  stepper tabs and the copy chip are `Button` with `role`, `aria-selected` and
+  `aria-controls` passed through, rather than bare `<button>` elements, which
+  keeps the design rule in `CLAUDE.md` intact and gives them the existing focus
+  ring and the 44px mobile hit area for free.
+- **One `<details>` on the page, and it holds every long paragraph.** Outside it
+  no section renders more than two consecutive `<p>` elements. The stat tile
+  values are `text-5xl font-mono`, which is a knowing exception to the Phase 8
+  observation that no `text-5xl` appeared anywhere: this phase asked for the
+  number to be the headline at display size, and a `text-2xl` tile is not a
+  tile.
+- **The tile figures are three that exist in this repository.** `3` is the three
+  levels in `lib/markets.ts` ("Three levels, tried in this order", line 7). `11`
+  is the test count in `contracts/test/PerennisVault.t.sol`: ten `test_`
+  functions plus `testFuzz_DepositThenWithdrawNeverExceedsBalance`, which is the
+  five original plus the six the Phase 5 security pass added, and matches what
+  `README.md` already claimed in prose. `0` is keeper transactions.
+- **Two hero facts are sliced off `@/lib/config` rather than typed.** `CHAIN_ID`
+  goes in the badge and `REACTIVITY_PRECOMPILE.slice(-4)` builds the `0x…0100`
+  cell, so the strip cannot disagree with what the app is pointed at.
+- **`LICENSE` did not exist, so it was written.** MIT, 2026, at the repository
+  root, and `README.md` names it. The alternative the phase allowed (state
+  plainly that no license ships and why) is worse for a hackathon repository a
+  judge is told to open.
+- **`SUBMISSION.md` opens by admitting the form was never seen.** The live
+  DoraHacks form could not be opened from this session, so field order is best
+  effort and character limits are marked unknown where they are unknown rather
+  than guessed. The two track headings are byte identical to the `DELIVERY.md`
+  headings, which are byte identical to the hackathon page, and both `entryMode:
+  automatic` lines are carried across.
+- **`docs/step-*.png` are text links in `README.md`, never `![]()` embeds.** A
+  shot nobody captured should read as a dead link, not as a broken image in the
+  middle of the file a judge opens first.
+- **`README.md` and `SUBMISSION.md` carry the identical string** `PENDING,
+  filled by a human before submitting` in the live app and demo video fields, and
+  `README.md` says out loud that the two copies have to be replaced in the same
+  sitting.
+
+### Failed attempts and deviations
+
+- **Nothing was run, so no error could survive two correction attempts.** This
+  session had no shell, no network and no browser.
+- **Nothing was cut.** The cut protocol ordered the tilt wrapper first, then
+  `QueueMark` and `StopRuleMark`, then the stepper degrading to static cards.
+  None of the three was needed, with one substitution worth naming: **the
+  optional tilt wrapper on the preview card was not built.** It was first on the
+  cut list, it is the one item the phase called optional, and a `matchMedia`
+  guarded transform on the one card a judge looks at in the first three seconds
+  is a risk with no argument for it. `QueueMark` and `StopRuleMark` both shipped:
+  `StopRuleMark` is the third stepper panel, `QueueMark` sits beside the stat
+  tile heading (the phase text said "one per stepper panel" for four marks but
+  the stepper has three panels, so the fourth found the nearest honest home).
+- **`components/site-footer.tsx` no longer imports `Separator`.** The rule it
+  drew is gone with the paragraph it separated. `Separator` is still imported by
+  `components/standing-plan-console.tsx` and `components/console-preview.tsx`,
+  so the Phase 8 primitive is not orphaned.
+- **`public/illustrations/window-grid.svg` is still rendered** in the `#how`
+  section's `lg` only column, unchanged. `roll-loop.svg` is no longer rendered
+  from `app/page.tsx`, because `RollLoopMark` took its place in the hero, but it
+  is still rendered by `VaultEmptyState` in
+  `components/standing-plan-console.tsx`, so nothing under `public/` became
+  unreferenced.
+- **`app/global-error.tsx:34` still renders a bare `<button>`,** and
+  `app/icon.svg` still carries four hex literals. Both are recorded in section 12
+  with their reasoning, both predate this phase, neither was touched.
+- **Two em dashes still survive in `components/standing-plan-console.tsx`.** That
+  file is frozen this phase.
+- **The 90 second `VIDEO.md` headings were re-labelled, not renumbered.** Each of
+  the four band headings now reads "of the console take" so the reader can tell
+  the console take's own clock from the finished cut's clock. The four bands,
+  their contents and their durations are unchanged, which is what the panel's
+  silent open and sub-1:00 wow moment required.
+
+### Files changed
+
+Added: `components/brand/marks.tsx`, `components/reveal.tsx`,
+`components/loop-stepper.tsx`, `components/copy-chip.tsx`, `SUBMISSION.md`,
+`docs/SCREENSHOTS.md`, `LICENSE`.
+
+Changed: `app/page.tsx`, `app/globals.css`, `components/console-preview.tsx`,
+`components/proof-panel.tsx`, `components/site-footer.tsx`, `README.md`,
+`VIDEO.md`, `DEMO.md` (step 8 body and its dependency row only), `HANDOFF.md`,
+`.farm-commits.json`.
+
+Deleted: the `steps`, `comparisons` and `shipped` arrays in `app/page.tsx`, and
+the `FooterAddress` helper in `components/site-footer.tsx`. No file was deleted.
+Nothing under `public/`, `contracts/`, `fixtures/`, `app/api/`, `lib/tx.ts`,
+`lib/vault.ts`, `lib/config.ts`, `lib/dreamdex.ts`, `lib/markets.ts`,
+`lib/rpc.ts` or `lib/adapters/` was touched.
+`components/standing-plan-console.tsx` was not opened. `app/icon.svg` and
+`app/opengraph-image.png` are untouched, there is no `app/opengraph-image.tsx`,
+and there are still two page routes and four API routes. No npm dependency, no
+new route, no new env var, no schema change, and no edit to
+`contracts/src/PerennisVault.sol`.
+
+### Commands run
+
+None. This phase had no command access: not `npm install`, not `npm run build`,
+not `npm run seed`, not `npm run demo:reset`, not `npm run test:contracts`, not
+`forge build`, not `forge test`, not a single RPC call.
+
+What the runner should run, in order:
+
+```bash
+npm install            # dependencies are unchanged, this should be a no-op
+npm run build          # must pass with zero TypeScript errors
+npm run seed           # twice, fixtures/seed-manifest.json must be identical
+npm run test:contracts # unchanged this phase, nothing under contracts/ moved
+```
+
+The highest risk items in this diff, in order: the four new client components
+compiling under React 19 typings (`components/loop-stepper.tsx` passes `role`,
+`aria-selected`, `aria-controls` and `tabIndex` through `Button`), the
+`CSSProperties` casts that carry `--delay`, and the `maskImage` /
+`WebkitMaskImage` inline style on the hero `Image`.
+
+Local preview before deploy: **kill any stale `next start` by port first.** A
+stale server serves the old build and the new CSS 404s, which will look exactly
+like the motion system not working. Then screenshot at 360 and 1280, and
+**scroll to each section so the reveals fire.** A full page capture taken
+without scrolling shows every `Reveal` wrapped section at opacity 0 and is not
+evidence of breakage. Then compare the AFTER screenshots against the six offenses
+in the table above; a survivor reopens the phase.
+
+### Open questions for the human
+
+1. **Is the hero background worth keeping at all now?** It is confined to the
+   right 48 percent, hidden below `lg`, masked to zero before the text column,
+   and sitting at 0.16 opacity behind a card. That may be so subtle it is not
+   earning its 240KB. Deleting the `Image` block is a four line change if a real
+   screen says it reads as noise.
+2. **Does the tab stepper read as clickable without a hover?** The three tabs
+   are mono `Button`s and the selected one is `secondary` with a teal border.
+   Nobody has seen it. If it reads as three static labels, the fix is a caret or
+   an "index of three" counter on the panel, not more color.
+3. **`QueueMark` sits beside the stat tile heading rather than in a stepper
+   panel,** because the stepper has three panels and the brief named four marks
+   for it. Say if it belongs somewhere else, or if the stepper should grow a
+   fourth "queue" tab.
+4. **The tile figures will go stale.** `11` is the current test count and `3` is
+   the current number of discovery levels. Adding a twelfth test without editing
+   `app/page.tsx` makes the landing page lie. Nothing guards this, the same way
+   nothing guards `components/console-preview.tsx` against a fixture edit
+   (section 12, open question 1). Both are worth one check in `scripts/seed.mjs`.
+5. **`SUBMISSION.md` names the team as one solo builder.** Correct it before the
+   form if anyone else should be credited.
+
+### Next best step for Phase 10
+
+Nothing more can be done on this surface without a shell. Everything left is the
+two artefacts no shell-less session can produce, and they have to happen in this
+order:
+
+1. Fund the wallet **before** the run, not during it. STT on chain 50312 for
+   deploy gas plus at least `0.05` STT per `startPlan` for subscription funding,
+   and tUSDC through `faucet(10000000000)` on
+   `0x70a86D8842FB63C4Ad2b7cdddF530eBf1BB25d8E`. STT sources:
+   https://cloud.google.com/application/web3/faucet/somnia/shannon,
+   https://stakely.io/faucet/somnia-testnet-stt,
+   https://thirdweb.com/somnia-shannon-testnet, and Somnia Discord `#dev-chat`
+   or developers@somnia.foundation as the human fallback.
+2. Deploy `contracts/script/Deploy.s.sol`, then run `contracts/script/Smoke.s.sol`
+   with `DEPLOYED_CONTRACT` and `COLLATERAL_TOKEN` exported. Fill `EVIDENCE.md`
+   rows 1, 2, 3, 4, 5, 7, 8, 9, and put the Smoke hash in the README on chain
+   proof row.
+3. Set `NEXT_PUBLIC_CONTRACT_ADDRESS` and `NEXT_PUBLIC_BINARY_MARKETS_MODULE` so
+   the proof panel stops saying "not configured in this deployment", and redeploy
+   to the same Vercel project so `https://perennis-app.vercel.app` does not move.
+4. Record `VIDEO.md` against a real window boundary with the whole wallet flow on
+   screen, 2 to 3 minutes, uploaded at least 12 hours before 8 September 2026
+   18:00 UTC. Capture `docs/step-*.png` on the same run.
+5. Replace both copies of `PENDING, filled by a human before submitting`, then
+   work the checklist below.
+
+### Manual submit checklist
+
+Do not duplicate the list. **`DELIVERY.md`, section "Before submitting", is the
+list**, and its first three items are gates that do not go on the form on trust:
+the live URL answering in a cold private window on the production deployment,
+the video URL coming from a real recorded take of `VIDEO.md`, and every slot in
+`EVIDENCE.md` filled with no `NOT YET FILLED` row left.
+
+Three things this phase added to that walk, which live here rather than there
+because they are new files:
+
+- `SUBMISSION.md` is the paste ready form. Read its first paragraph before
+  opening DoraHacks: the field order in it was never checked against the live
+  form.
+- `docs/SCREENSHOTS.md` is the capture list, at 1280 and 360, and it is a
+  separate pass from the recording.
+- The exact string `PENDING, filled by a human before submitting` marks four
+  fields: the live app and demo video rows of the `README.md` Demo table, and
+  the "Demo video link" and "Live demo link" blocks in `SUBMISSION.md`. Grep for
+  it before submitting. A grep also hits one prose sentence in each file that
+  names the string, so two hits left after filling both files in is correct and
+  six hits means nothing was filled in.

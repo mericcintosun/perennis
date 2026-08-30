@@ -12,20 +12,47 @@ submission goes on the form, and until then they say so.
 
 | What | Status today | Where |
 | --- | --- | --- |
-| Live app | The intended production target. https://perennis-app.vercel.app. It goes on the DoraHacks form only after it loads `/console` in a private window. | https://perennis-app.vercel.app |
-| Demo video | Not recorded. The 90 second shot list is written, second banded and rehearsable. | [VIDEO.md](VIDEO.md) |
-| On chain proof | Not deployed. One row per artefact, every slot empty and labelled, with the recipe to produce it. The live app carries the same addresses in its proof panel at `/#proof`, each linked to the Shannon explorer, and `GET /api/health` says whether the deployment is reading the chain or the fixtures. An address that is not configured says so in words there rather than showing a placeholder hash. | [EVIDENCE.md](EVIDENCE.md), `/#proof`, `GET /api/health` |
+| Live app | `PENDING, filled by a human before submitting`. The intended production target is https://perennis-app.vercel.app. It goes on the DoraHacks form only after it loads `/console` in a private window. | https://perennis-app.vercel.app |
+| Demo video | `PENDING, filled by a human before submitting`. The 2:20 cut is written, second banded, rehearsable, and carries a screenshot fallback per band. | [VIDEO.md](VIDEO.md) |
+| On chain proof | Not deployed. One row per artefact, every slot empty and labelled, with the recipe to produce it. The `Smoke.s.sol` deposit transaction hash goes in row 9 of that file. The live app carries the same addresses in its proof panel at `/#proof`, each linked to the Shannon explorer, and `GET /api/health` says whether the deployment is reading the chain or the fixtures. An address that is not configured says so in words there rather than showing a placeholder hash. | [EVIDENCE.md](EVIDENCE.md), `/#proof`, `GET /api/health` |
 | Security | Contract addresses, every wallet permission this app requests, and the bounded approval amounts. It never asks for `eth_sign` or `personal_sign`, and no wallet dialog opens on page load. | [SECURITY.md](SECURITY.md) |
 
-**The link is down? Run it locally in 30 seconds. No env vars needed.**
+The exact string `PENDING, filled by a human before submitting` appears in the
+same two fields in [SUBMISSION.md](SUBMISSION.md), which is the paste ready
+DoraHacks form. Replace both copies in the same sitting.
 
-```bash
-npm install && npm run dev
+## Try it in 60 seconds
+
+Three lines. No environment file, no wallet, no network.
+
+1. `npm install && npm run dev`
+2. Open http://localhost:3000/console
+3. Wait for the countdown ring to hit zero and watch the card roll itself
+
+That third line is the whole submission. Nothing is signed, no wallet dialog
+opens, and the ledger gains a row. `/console` serves `fixtures/*.json` with an
+empty `.env.local`, so the countdown, the roll, the ledger and the queue strip
+all work with nothing configured.
+
+## How the pieces connect
+
+```mermaid
+flowchart TD
+  Console["app/console/page.tsx"] --> Adapter["lib/adapters/index.ts"]
+  Adapter --> Fake["lib/adapters/fake.ts"]
+  Adapter --> Chain["lib/adapters/chain.ts"]
+  Chain --> Dreamdex["lib/dreamdex.ts"]
+  Dreamdex --> Markets["lib/markets.ts"]
+  Markets --> Rpc["lib/rpc.ts"]
+
+  Vault["contracts/src/PerennisVault.sol"] --> Precompile["reactivity precompile 0x0100"]
+  Precompile --> Module["DreamDEX BinaryMarketsModule"]
 ```
 
-Then open http://localhost:3000/console. That is the whole demo route. It serves
-`fixtures/*.json` with an empty `.env.local`, so the countdown, the roll, the
-ledger and the queue strip all work with nothing configured.
+`ADAPTER_MODE` picks the left branch. The right branch is the contract's own
+path and runs with no frontend involved at all: the precompile calls the vault's
+handler in the settlement block, and the vault calls the markets module to
+redeem and to buy.
 
 ## The problem
 
@@ -154,11 +181,19 @@ top to bottom:
 
 ## Quickstart
 
+Five commands. The first three are all you need to see the demo.
+
 ```bash
 npm install
-cp .env.example .env.local   # optional, everything works without it
-npm run dev
+npm run dev              # http://localhost:3000/console
+npm run build            # must stay green
+npm run seed             # checks fixtures/*.json, rewrites fixtures/seed-manifest.json
+npm run test:contracts   # cd contracts && forge test, needs Foundry installed
 ```
+
+`cp .env.example .env.local` is optional and everything works without it.
+`npm run demo:reset` re-verifies the fixtures and prints the chain reset
+commands; `CLAUDE.md` lists it with the rest.
 
 Open http://localhost:3000/console. It has three vaults: an empty one to write a
 plan into, one running an eight window BTC plan, and one that halted itself after
@@ -170,13 +205,6 @@ To run against the chain, deploy the vault first and fill in
 `NEXT_PUBLIC_CONTRACT_ADDRESS` and `NEXT_PUBLIC_BINARY_MARKETS_MODULE`. Build and
 deploy commands are in [contracts/README.md](contracts/README.md), including the
 `cast` calls for the tUSDC faucet, the deposit, and `startPlan`.
-
-```bash
-npm run build      # must stay green
-npm run seed       # checks fixtures/*.json and rewrites fixtures/seed-manifest.json
-npm run demo:reset # re-verifies the fixtures, prints the chain reset commands
-npm run test:contracts   # cd contracts && forge test, needs Foundry installed
-```
 
 ## Running against Shannon
 
@@ -263,10 +291,40 @@ says the write was simulated, which is what the deployed demo URL runs on.
 - Subscription gas top up from inside the vault, so a long plan cannot stall
   because the owner's STT ran out mid session.
 
+## Screenshots
+
+One per `DEMO.md` step, captured by a human at 1280 wide, with a 360 wide copy
+beside it. They are text links rather than embedded images on purpose: a shot
+that has not been captured yet should read as a dead link, not as a broken image
+in the middle of this file. [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md) is the
+capture list and says what must be in frame for each.
+
+| Step | What it shows | File |
+| --- | --- | --- |
+| 1 | The plan builder filled in, Vault 01 empty | `docs/step-1.png` |
+| 2 | The countdown ring, entry price, implied probability, book depth | `docs/step-2.png` |
+| 3 | The pre-write health strip | `docs/step-3.png` |
+| 4 | The roll, with no wallet dialog on screen | `docs/step-4.png` |
+| 5 | The new ledger row and its validator call badge | `docs/step-5.png` |
+| 6 | Vault 03 halted on two losses in a row | `docs/step-6.png` |
+| 7 | The queue strip and its lifecycle states | `docs/step-7.png` |
+| 8 | The landing hero, the tab stepper and the stat tiles | `docs/step-8.png` |
+| 9 | The proof panel and `GET /api/health` | `docs/step-9.png` |
+
+## Submitting this
+
+[SUBMISSION.md](SUBMISSION.md) is the DoraHacks BUIDL form, every field in one
+paste ready block. [DELIVERY.md](DELIVERY.md) has the deadlines and the
+"Before submitting" list a human runs.
+
 ## AI use
 
 We used AI coding assistants for scaffolding and boilerplate. Architecture,
 product decisions, and final code review are our own.
+
+## License
+
+MIT. The full text is in [LICENSE](LICENSE) at the repository root.
 
 ## Status
 
