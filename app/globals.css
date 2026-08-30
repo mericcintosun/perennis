@@ -1,33 +1,34 @@
 @import "tailwindcss";
 
-/* Perennis design tokens. The ONLY place colors live: components never carry
-   a raw hex value. Palette matches the brand rasters in public/brand:
-   ground #0B0F14, teal #2DD4BF, amber #F5A524, slate #94A3B8.
-   Teal carries the identity. Amber is reserved for stop rules and loss states,
-   so it never competes with teal. */
+/* Perennis design tokens. The ONLY place colors live: components never carry a
+   raw hex value, and IDENTITY.md at the repo root is the law this block
+   implements. Broadsheet ink: a warm brown-black ground with one clay accent,
+   hairline rules and square corners. There is no amber in this product and no
+   second accent. */
 :root {
-  --background: #0b0f14;
-  --foreground: #e6edf3;
-  --card: #111820;
-  --card-foreground: #e6edf3;
-  --popover: #111820;
-  --popover-foreground: #e6edf3;
-  --primary: #2dd4bf;
-  --primary-foreground: #04231f;
-  --secondary: #161f29;
-  --secondary-foreground: #e6edf3;
-  --muted: #161f29;
-  --muted-foreground: #94a3b8;
-  --accent: #1b2735;
-  --accent-foreground: #e6edf3;
-  /* Amber doubles as the destructive and the warning role: one alert color. */
-  --destructive: #f5a524;
-  --destructive-foreground: #1a1204;
-  --warning: #f5a524;
-  --border: #1e2a36;
-  --input: #1e2a36;
-  --ring: #2dd4bf;
-  --radius: 0.75rem;
+  --background: #16110d;
+  --foreground: #f3eae0;
+  --card: #1e1813;
+  --card-foreground: #f3eae0;
+  --popover: #1e1813;
+  --popover-foreground: #f3eae0;
+  --primary: #d2622f;
+  --primary-foreground: #1a0e06;
+  --secondary: #271f18;
+  --secondary-foreground: #f3eae0;
+  --muted: #271f18;
+  --muted-foreground: #a8998b;
+  --accent: #2f251c;
+  --accent-foreground: #f3eae0;
+  --positive: #8fa75b;
+  --negative: #cb5f4f;
+  --destructive: #cb5f4f;
+  --destructive-foreground: #f3eae0;
+  --warning: #cb5f4f;
+  --border: #33291f;
+  --input: #33291f;
+  --ring: #d2622f;
+  --radius: 0.125rem;
 }
 
 @theme inline {
@@ -45,23 +46,34 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-warning: var(--warning);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  /* Three faces, loaded in app/layout.tsx through next/font/google and written
+     onto <html> as CSS variables. Mapping them here is what makes font-sans,
+     font-serif and font-mono resolve to them. */
+  --font-sans: var(--font-text);
+  --font-serif: var(--font-display);
+  --font-mono: var(--font-data);
+  /* Sharp. The two small radius steps land on the token itself and the two
+     larger ones are one doubling above it, so nothing in the app can render a
+     12 pixel corner by asking for a bigger radius utility. */
+  --radius-sm: var(--radius);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) * 2);
+  --radius-xl: calc(var(--radius) * 2);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--font-text), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -71,125 +83,63 @@ body {
   font-feature-settings: "tnum";
 }
 
-@keyframes perennis-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.35;
-  }
-}
+/* --- the motion system --------------------------------------------------
+   Two keyframes, both prefixed pns-, and three helper classes. That is the
+   whole system, and IDENTITY.md is why it is this small.
 
-.pulse-dot {
-  animation: perennis-pulse 2s ease-in-out infinite;
-}
+   Ink-in is opacity only. Nothing translates, nothing floats, nothing pulses,
+   and nothing on this site starts at opacity 0 unless it is inside the masthead,
+   which is above the fold on every width. There is no IntersectionObserver in
+   this repository, so a full page screenshot renders every section.
 
-/* --- the Phase 9 motion system ------------------------------------------
-   Four keyframes and one reveal pair. Every helper class below is named after
-   the keyframe it runs, so the reduced motion block at the bottom of this file
-   can name each one and a reader can see at a glance that nothing was missed.
+   Stagger rides nth-child on .pns-masthead rather than an inline custom
+   property, so a reader can see the whole ladder in one place and no component
+   writes a style attribute to get its delay. */
 
-   Stagger is a custom property rather than a class per step: a component writes
-   style={{ "--delay": "160ms" }} and animation-delay reads it, so there is no
-   ladder of .delay-1 .delay-2 utilities to keep in sync.
-
-   Nothing on this page depends on an animation to be readable. Every animated
-   element is in the server HTML with its text, and the reduced motion block
-   below leaves all of it visible and still. */
-
-@keyframes fade-up {
+@keyframes pns-ink-in {
   from {
     opacity: 0;
-    transform: translateY(14px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
-@keyframes float {
+@keyframes pns-rule-draw {
   from {
-    transform: translateY(-6px);
+    transform: scaleX(0);
   }
   to {
-    transform: translateY(6px);
+    transform: scaleX(1);
   }
 }
 
-@keyframes glow-pulse {
-  0%,
-  100% {
-    opacity: 0.35;
-  }
-  50% {
-    opacity: 0.75;
-  }
+.pns-ink-in {
+  animation: pns-ink-in 420ms ease-out both;
 }
 
-@keyframes caret-blink {
-  0%,
-  49% {
-    opacity: 1;
-  }
-  50%,
-  100% {
-    opacity: 0;
-  }
+.pns-rule {
+  transform-origin: left;
+  animation: pns-rule-draw 520ms ease-out both;
 }
 
-/* Hero entrance. Starts hidden and ends visible, hence `forwards`. */
-.fade-up {
-  opacity: 0;
-  animation: fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-  animation-delay: var(--delay, 0ms);
+.pns-masthead > *:nth-child(2) {
+  animation-delay: 90ms;
 }
 
-/* The hero mark. Alternate, so 6s is one full up and down. */
-.float {
-  animation: float 6s ease-in-out infinite alternate;
+.pns-masthead > *:nth-child(3) {
+  animation-delay: 180ms;
 }
 
-/* A soft breathing wash behind the hero mark. Decorative only. */
-.glow-pulse {
-  animation: glow-pulse 4s ease-in-out infinite;
-}
-
-/* The block caret on the console preview chrome. */
-.caret-blink {
-  animation: caret-blink 1.1s steps(1, end) infinite;
-}
-
-/* Scroll reveal. components/reveal.tsx adds .reveal-in once the element is on
-   screen and then disconnects its observer. */
-.reveal {
-  opacity: 0;
-  transform: translateY(14px);
-}
-
-.reveal-in {
-  animation: fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-  animation-delay: var(--delay, 0ms);
+.pns-masthead > *:nth-child(4) {
+  animation-delay: 270ms;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pulse-dot,
-  .fade-up,
-  .float,
-  .glow-pulse,
-  .caret-blink,
-  .reveal-in {
+  .pns-ink-in,
+  .pns-rule {
     animation: none;
-  }
-  /* Anything that starts hidden has to end visible with no animation to run. */
-  .fade-up,
-  .reveal,
-  .reveal-in {
     opacity: 1;
     transform: none;
-  }
-  .caret-blink {
-    opacity: 1;
   }
 }
