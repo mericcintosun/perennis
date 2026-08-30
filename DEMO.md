@@ -73,6 +73,14 @@ Each step names the route that serves it.
 8. **`/`** The landing page carries the closing frame: the problem sentence, the
    three step explanation, and what Perennis is not.
 
+9. **`/#proof`** Scroll to the proof panel at the bottom of the landing page. It
+   names the vault, the collateral token and the DreamDEX BinaryMarketsModule,
+   each linked to the Shannon explorer, plus `GET /api/health`, which says
+   whether this deployment is on the chain path or the fixture path. An address
+   that is not configured says so in words rather than showing a placeholder
+   hash. This is where the "live read from Shannon" claim gets checked without
+   trusting a badge.
+
 ## The demo clock
 
 The countdown is `DEMO_WINDOW_SECONDS = 20` in
@@ -94,7 +102,9 @@ check.
 | 6 | Vault 03 seeded as `STOPPED` on `consecutive-losses` |
 | 7 | `QueueStrip` in `components/standing-plan-console.tsx`, `discoverEventWindows()` in `lib/markets.ts` |
 | 8 | `app/page.tsx` |
+| 9 | `components/proof-panel.tsx`, `lib/config.ts` |
 
 Steps 1 to 6 keep the numbers they were given in Phase 1. `HANDOFF.md` sections
 7 and 8 refer to them by number, so step 7 was inserted at the end and the
-landing page step moved to 8 rather than renumbering the walk.
+landing page step moved to 8 rather than renumbering the walk. Step 9 was added
+the same way in Phase 8: appended at the end, with steps 1 to 8 untouched.

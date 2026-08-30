@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { StandingPlanConsole } from "@/components/standing-plan-console";
 import { getAdapter } from "@/lib/adapters";
 // Config, not chain code. Importing the explorer base from lib/config.ts rather
@@ -34,12 +35,22 @@ export default async function ConsolePage() {
           The console
         </h1>
         <p className="mt-3 text-muted-foreground">
-          Three vaults sit side by side. Vault 01 is empty, so you can deposit and
-          write a plan into it. Vault 02 is running an eight window plan on BTC
-          with a position open right now. Vault 03 halted itself after two losses
-          in a row, and its balance is waiting to be withdrawn. Let the countdown
-          reach zero on Vault 02 and watch the card roll. Nothing asks you to
-          sign.
+          Three vaults sit side by side: Vault 01 is empty and ready for a plan,
+          Vault 02 is running an eight window BTC plan with a position open, and
+          Vault 03 halted itself after two losses in a row. Watch the countdown
+          on Vault 02 reach zero, because the card redeems and re-enters on its
+          own and nothing asks you to sign.
+        </p>
+        {/* The proof panel lives on the landing page, so the link out is here
+            rather than in the header, which already wraps at 360px. */}
+        <p className="mt-3 text-sm text-muted-foreground">
+          <Link
+            className="underline underline-offset-4 hover:text-foreground"
+            href="/#proof"
+          >
+            Contract addresses and the health probe
+          </Link>{" "}
+          are on the overview page.
         </p>
       </div>
 
