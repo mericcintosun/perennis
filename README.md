@@ -4,8 +4,27 @@
 once, and the vault redeems and re-enters itself at every settlement with your
 stop rules enforced as contract terms.**
 
-> Live demo: https://perennis.vercel.app
-> Video: `<ADD_VIDEO_URL>`
+## Demo
+
+Three links, with what is actually behind each one. Nothing in this table is
+claimed to be live: the two empty rows are filled in by a human before the
+submission goes on the form, and until then they say so.
+
+| What | Status today | Where |
+| --- | --- | --- |
+| Live app | The intended production target. Not confirmed answering. It goes on the DoraHacks form only after it loads `/console` in a private window. | https://perennis.vercel.app |
+| Demo video | Not recorded. The 90 second shot list is written, second banded and rehearsable. | [VIDEO.md](VIDEO.md) |
+| On chain proof | Not deployed. One row per artefact, every slot empty and labelled, with the recipe to produce it. | [EVIDENCE.md](EVIDENCE.md) |
+
+**The link is down? Run it locally in 30 seconds. No env vars needed.**
+
+```bash
+npm install && npm run dev
+```
+
+Then open http://localhost:3000/console. That is the whole demo route. It serves
+`fixtures/*.json` with an empty `.env.local`, so the countdown, the roll, the
+ledger and the queue strip all work with nothing configured.
 
 ## The problem
 
@@ -97,6 +116,35 @@ open window on the vault card and every id in the queue strip come through
 - Somnia reactivity precompile `0x0100`, DreamDEX BinaryMarketsModule, ERC-6909
   outcome tokens, tUSDC collateral
 - Deploys to Vercel, no server processes and no runtime filesystem writes
+
+The contract's five tests are in `contracts/test/PerennisVault.t.sol`, and
+[contracts/README.md](contracts/README.md) has a table saying what each one
+asserts rather than what its name suggests.
+
+## What the console shows
+
+`/console` is one screen, and every part of it is on the demo path. Five things,
+top to bottom:
+
+- **The plan builder**, left column. Deposit, direction, stake per window, window
+  count, and the three stop rules. `planDefaults` in `lib/data/seed.ts` fills the
+  fields, `parsePlanForm()` in `lib/schemas.ts` is the only definition of a valid
+  plan, and one signature sends `startPlan`.
+- **The live vault card** with the countdown ring (`CountdownRing`,
+  `components/standing-plan-console.tsx:1130`): balance, realised PnL, win rate,
+  and the open window's entry price, implied probability and book depth. The
+  countdown is `DEMO_WINDOW_SECONDS = 20` standing in for a real 15 minute Event
+  Contracts window, labelled as a demo clock under the ring. That compressed
+  clock is the only thing about the flow that is sped up.
+- **The pre-write health strip**, from `preflight()` in `lib/vault.ts`: market
+  lifecycle state, the collateral decimals read off the token, and the
+  reactivity subscription.
+- **The queue strip** (`QueueStrip`, `components/standing-plan-console.tsx:907`),
+  naming the next windows the vault will enter with the lifecycle state market
+  discovery read for each id. It moves with no click and no signature.
+- **The roll ledger timeline**, right column. One row per settled window with its
+  outcome, balance, block, a link to the Shannon transaction, and a "validator
+  call" badge derived from the transaction sender rather than asserted.
 
 ## Quickstart
 
