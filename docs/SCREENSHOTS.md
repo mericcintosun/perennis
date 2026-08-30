@@ -27,6 +27,11 @@ below the fold starts hidden, so a full page capture taken without scrolling now
 shows every section. If a section comes out blank, that is a bug in the page and
 it reopens Phase 8.
 
+**No hovering ritual either.** The roll figure in the masthead opens stage 01 in
+the server rendered HTML, and the balance sparkline is a complete path before any
+animation runs, so neither one needs a cursor parked on it to be captured. Hover
+stage 02 or 03 only if you want a different stage in frame.
+
 ## The nine shots
 
 | File | Route | What must be in frame |
@@ -38,7 +43,7 @@ it reopens Phase 8.
 | `docs/step-5.png` | `/console` | The new ledger row with its "validator call" badge and its link out to the Shannon explorer. Capture the explorer tab beside it if the window allows. |
 | `docs/step-6.png` | `/console` | Vault 03: two consecutive losses in its ledger, the halt reason on the status badge, and the balance sitting in the vault. |
 | `docs/step-7.png` | `/console` | The queue strip under the pre-write checks, naming the next market ids with the lifecycle state discovery read for each. |
-| `docs/step-8.png` | `/` | The landing hero: the headline, the mono stat strip (1, 0, 20s, `0x…0100`) and the console preview card beside it. Then a second frame of the tab stepper with step 02 selected and its trace line readable, and the three stat tiles. |
+| `docs/step-8.png` | `/` | The landing masthead: the headline, the lead, one button, and the annotated roll figure beside it with stage 01's caption open. Then a second frame of "What is running today", showing the balance sparkline inside its sentence with the WON and LOST figures readable, and the three dispatch entries under it. |
 | `docs/step-9.png` | `/#proof` | The proof panel with all three addresses, the copy chip on the `GET /api/health` row, and the health JSON open in a second tab if the window allows. |
 
 ## Order to capture in

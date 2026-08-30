@@ -17,9 +17,14 @@ submission goes on the form, and until then they say so.
 | On chain proof | Not deployed. One row per artefact, every slot empty and labelled, with the recipe to produce it. The `Smoke.s.sol` deposit transaction hash goes in row 9 of that file. The live app carries the same addresses in its proof panel at `/#proof`, each linked to the Shannon explorer, and `GET /api/health` says whether the deployment is reading the chain or the fixtures. An address that is not configured says so in words there rather than showing a placeholder hash. | [EVIDENCE.md](EVIDENCE.md), `/#proof`, `GET /api/health` |
 | Security | Contract addresses, every wallet permission this app requests, and the bounded approval amounts. It never asks for `eth_sign` or `personal_sign`, and no wallet dialog opens on page load. | [SECURITY.md](SECURITY.md) |
 
-The exact string `PENDING, filled by a human before submitting` appears in the
-same two fields in [SUBMISSION.md](SUBMISSION.md), which is the paste ready
-DoraHacks form. Replace both copies in the same sitting.
+The same placeholder marks the same two fields in
+[SUBMISSION.md](SUBMISSION.md), which is the paste ready DoraHacks form. It is
+one string, byte identical in both files, and it appears exactly twice in each:
+the live app row and the demo video row here, the "Live demo link" and "Demo
+video link" blocks there. Grep the repository for `PENDING` before submitting.
+Four hits means nothing has been filled in, zero means both files are done, and
+anything between means one field was missed. Replace all four copies in the same
+sitting.
 
 ## Try it in 60 seconds
 
@@ -308,7 +313,7 @@ capture list and says what must be in frame for each.
 | 5 | The new ledger row and its validator call badge | `docs/step-5.png` |
 | 6 | Vault 03 halted on two losses in a row | `docs/step-6.png` |
 | 7 | The queue strip and its lifecycle states | `docs/step-7.png` |
-| 8 | The landing hero, the tab stepper and the stat tiles | `docs/step-8.png` |
+| 8 | The landing masthead with the annotated roll figure, then the dispatch entries and the balance figure | `docs/step-8.png` |
 | 9 | The proof panel and `GET /api/health` | `docs/step-9.png` |
 
 ## Submitting this
@@ -319,8 +324,17 @@ paste ready block. [DELIVERY.md](DELIVERY.md) has the deadlines and the
 
 ## AI use
 
-We used AI coding assistants for scaffolding and boilerplate. Architecture,
-product decisions, and final code review are our own.
+The Event Contracts Hackathon published no AI policy, so nothing here is a claim
+against a rule that does not exist. It is written down because a judge reading
+this repository should not have to guess.
+
+AI coding assistants wrote a large share of the code in this repository,
+including scaffolding, boilerplate, the component layer and the first draft of
+most documentation. The architecture, the product decisions, the contract's
+settlement and stop rule semantics, and the final review of every file are the
+author's own. Nothing in `EVIDENCE.md` is generated: every row there is a value a
+human read off the chain after a real transaction, and a row that has not been
+filled in says so.
 
 ## License
 

@@ -2291,9 +2291,11 @@ because they are new files:
 - The exact string `PENDING, filled by a human before submitting` marks four
   fields: the live app and demo video rows of the `README.md` Demo table, and
   the "Demo video link" and "Live demo link" blocks in `SUBMISSION.md`. Grep for
-  it before submitting. A grep also hits one prose sentence in each file that
-  names the string, so two hits left after filling both files in is correct and
-  six hits means nothing was filled in.
+  it before submitting. **Phase 9 corrected this count.** The prose sentence in
+  each file that used to quote the string in full no longer does, so the grep
+  now hits nothing but the four real fields: four hits means nothing was filled
+  in, zero means both files are done, and anything between means a field was
+  missed.
 
 ---
 
@@ -2412,3 +2414,280 @@ Phase 9: the hero scene, the brand set and the submission files. The masthead is
 deliberately typographic and has room for one real scene beside it, the brand
 rasters under `public/brand/` still need repainting into the clay palette, and
 `SUBMISSION.md` and `EVIDENCE.md` are still waiting on the deploy.
+
+---
+
+# Phase 9, the scene pass, the brand set in use, and the submission package
+
+## Goal
+
+Phase 8 made `/` structurally correct and honest, and left it flat. Both BEFORE
+shots showed one unlabelled ornament in the masthead's right margin, one of the
+five brand marks rendering anywhere, six dispatch entries in the same rhythm
+running for 800 of the 2000 rendered pixels, and nothing on the page a judge
+could hover, focus or click except two buttons and a details summary. Not one
+number from `fixtures/vaults.json`, the data `/console` actually runs on,
+appeared on the landing page at all.
+
+This phase put an annotated roll figure in the masthead, gave a judge three
+things to interact with, put all five marks to work, replaced the pre-identity
+masthead raster with a vector, and corrected the three documents that still
+described the stepper and stat tiles Phase 8 deleted.
+
+## Status
+
+All six slices applied. **Nothing was cut**, so no item from the cut protocol
+went into open questions. Not verified: `npm run build`, because this phase had
+no shell. The runner builds and gets one repair round.
+
+`.farm-delta.md` is rewritten as the Phase 9 delta with 7 diagnosis items, 8
+change rows, 2 kept rows and both grep tables filled in by actually re-grepping.
+Every Phase 8 `proof-gone` string was re-grepped and is still 0: nothing Phase 8
+removed came back.
+
+## Decisions
+
+- **The figure is a disclosure list, not a tab set.** `role="tablist"` is banned
+  here because the archetype is L3, so the three stages are three
+  `<button type="button">` elements in an `<ol>`, each with `aria-expanded` and
+  an `aria-controls` pointing at a caption that stays in the DOM at every state.
+  Hover, focus and click all do the same thing, so a mouse and a keyboard get
+  the same figure. Stage 01 is open in the initial state, which means its
+  caption is in the server rendered HTML: a crawler, a reader with JavaScript
+  off and a full page screenshot all get content.
+- **The closed captions are hidden by a utility class, not the `hidden`
+  attribute.** `[hidden]` and a `display` utility have the same specificity, so
+  which one wins depends on stylesheet order, which is not something to bet a
+  figure on. `open ? "block" : "hidden"` is unambiguous, and `display: none`
+  also takes the closed caption out of the accessibility tree, which is what a
+  collapsed disclosure should do.
+- **The count-up runs backwards from the finished value.** The initial state IS
+  the final number, so the server renders the real figure and the first client
+  render matches it byte for byte. Only after mount, and only when
+  `prefers-reduced-motion` is not `reduce`, does the effect rewind to zero and
+  count. The usual recipe (start at 0, animate up) would put a zero in the
+  server HTML and in every screenshot taken before hydration.
+- **The sparkline's base style is the finished line.** `.pns-draw` sets
+  `stroke-dasharray: 100; stroke-dashoffset: 0` and only the keyframe's `from`
+  hides it, with `pathLength="100"` on the path so no JavaScript has to measure
+  the geometry. Animations off, reduced motion and a pre-animation screenshot
+  all show the whole path.
+- **Hue is never the only carrier on the sparkline.** `BalanceLegend` prints
+  WON and LOST beside each figure in the same sentence, and the svg's
+  `aria-label` names the outcomes in words too.
+- **`public/brand/mark.svg` is a vector, drawn to the marks.tsx family rules.**
+  The Phase 9 fence lift was spent on exactly this one file. The raster it
+  replaces (`public/brand/logo.png`) stays on disk untouched, as does
+  `public/brand/og.png`. The header `<Image` carries `unoptimized`, which is
+  what lets an svg through `next/image` without turning on
+  `dangerouslyAllowSVG` for the whole app.
+- **The masthead is a two column grid from `lg` up, and the figure stacks below
+  it rather than disappearing.** The ornament it replaces was `lg:block`, which
+  is why the mobile BEFORE shot had no drawing on it anywhere in 8924 pixels.
+- **The "How it works" lead sentence was deleted, not rewritten.** The masthead
+  figure now says the same thing in a drawing. A section gets one sentence plus
+  a visual, not both twice.
+- **The `PENDING` prose sentences stopped quoting the placeholder in full.** The
+  grep for it now returns exactly the four real fields, so four hits means
+  nothing was filled in and zero means both files are done. The old convention
+  ("two hits left is correct") was a footgun and section 12 of this file is
+  corrected to match.
+
+### Mark to component pairs
+
+| Mark | Rendered by | Role |
+| --- | --- | --- |
+| `PlanMark` | `components/roll-figure.tsx`, stage 01 | decorative, `aria-hidden` |
+| `SettlementMark` | `components/roll-figure.tsx`, stage 02 | decorative, `aria-hidden` |
+| `RollLoopMark` | `components/roll-figure.tsx`, stage 03 | decorative, `aria-hidden` |
+| `StopRuleMark` | `app/page.tsx:57`, beside the "The stop rules halt it, not you" entry, through the new optional `DispatchEntry.mark` slot | decorative, `aria-hidden` |
+| `QueueMark` | `app/page.tsx:200`, beside the queue sentence | `title="The window queue"`, so `role="img"` |
+
+Every one of the five now has a call site outside `components/brand/marks.tsx`.
+
+### Seed source behind every figure
+
+| Figure | Component | Reads |
+| --- | --- | --- |
+| The count-up, "carries 400 tUSDC of deposits" | `components/figure-count.tsx` | `vaults.reduce(... depositTotal)` in `app/page.tsx:28`, from `lib/data/seed.ts` over `fixtures/vaults.json` |
+| "3 vaults and 6 settled windows" | `app/page.tsx` | `vaults.length` and `vaults.reduce(... ledger.length)`, same source |
+| The balance path and its WON/LOST words | `components/balance-sparkline.tsx` | `vault-02` `depositTotal` (200) then each `ledger[].balanceAfter` (223.08, 198.08, 218.53) and each `ledger[].outcome`, same source |
+| "200 deposited, 25 staked, the card reads 193.53" | `app/page.tsx` | `vault02.depositTotal`, `vault02.plan.stakePerWindow`, `vault02.balance`, same source |
+| "queues the next 3 market ids" | `app/page.tsx` | `vault02.queue.length`, same source |
+| The three stage captions | `components/roll-figure.tsx` | prose, no figures in them, so nothing to source |
+
+218.53 minus the 25 staked in the open window is 193.53, which is why the two
+numbers in that sentence do not look like they agree and do.
+
+## Failed attempts
+
+None that needed a second approach. Two things were changed after being written
+rather than after being seen fail, because nothing here could be run:
+
+1. The figure captions were first toggled with the `hidden` attribute. That was
+   replaced with a `block` / `hidden` class before it shipped, for the
+   specificity reason in Decisions above.
+2. The header `<Image>` was first written without `unoptimized`, which would
+   have made Next's image optimizer refuse an svg unless `dangerouslyAllowSVG`
+   were turned on for the whole app. **This is the single most likely thing in
+   this diff to be wrong on a real build.** If the mark does not render, the fix
+   is either keeping `unoptimized` (expected to work) or swapping the `<Image>`
+   for a plain `<img>` in the header, which is still exactly one image element.
+
+## Files changed
+
+Added: `components/roll-figure.tsx`, `components/balance-sparkline.tsx`,
+`components/figure-count.tsx`, `public/brand/mark.svg`, `.farm-commits.json`.
+
+Changed: `app/page.tsx`, `app/globals.css`, `components/dispatch-list.tsx`,
+`components/site-header.tsx`, `components/site-footer.tsx`, `.farm-delta.md`
+(rewritten as the Phase 9 delta), `IDENTITY.md`, `CLAUDE.md`, `README.md`,
+`SUBMISSION.md`, `VIDEO.md`, `docs/SCREENSHOTS.md`, `DEMO.md` (step 8 body and
+its dependency row only), `HANDOFF.md`.
+
+Deleted: nothing. No file was removed, because this session cannot delete one.
+
+Untouched, as fenced: `lib/` in every file, `contracts/` in every file,
+`fixtures/`, `scripts/`, `app/api/`, `app/layout.tsx`, `app/console/`,
+`components/standing-plan-console.tsx`, `components/wallet-panel.tsx`,
+`components/proof-panel.tsx`, `components/ui/`, `app/icon.svg`,
+`app/opengraph-image.png` (and no `app/opengraph-image.tsx` was added),
+`public/brand/logo.png`, `public/brand/og.png`, `public/logo.svg`,
+`public/illustrations/*`, `public/__farm.txt`, `EVIDENCE.md`, `DELIVERY.md`,
+`SECURITY.md`, `package.json`. No npm dependency, no new page or API route, no
+new env var, no schema change, no contract change, and no tag.
+
+Two files under `public/` are now referenced by nothing under `app/` or
+`components/`: `public/brand/logo.png` (replaced by the vector mark) and
+`public/illustrations/window-grid.svg` (the deleted ornament). Both stay on
+disk. They are inside the never touch fence and neither costs anything at
+runtime, so removing them is a human's call, not this phase's.
+
+## Commands run
+
+None. This phase had no shell: no `npm install`, no `npm run build`, no
+`npm run seed`, no `npm run demo:reset`, no `npm run test:contracts`, no
+`forge build`, no `forge test`, no `git`, no dev server, no browser at any
+width, not one RPC call. Every acceptance item below that needs a command is the
+runner's, and nothing in this record claims otherwise.
+
+What the runner should run, in order:
+
+```bash
+npm install            # dependencies are unchanged, this should be a no-op
+npm run build          # must pass with zero TypeScript errors
+npm run seed           # twice, fixtures/seed-manifest.json must be identical
+npm run test:contracts # unchanged this phase, nothing under contracts/ moved
+```
+
+Highest risk items in this diff, in order: the `unoptimized` svg in the header
+(see Failed attempts), the three new components compiling under React 19 typings
+(`components/roll-figure.tsx` renders a component held in a data array as
+`<stage.Mark />`), and the `pathLength` and `stroke-dashoffset` pair in
+`components/balance-sparkline.tsx` plus `app/globals.css`.
+
+Local preview before deploy: kill any stale `next start` by PORT first, because
+a stale server serves the old build and the new CSS 404s, which will look
+exactly like the motion system being broken. Then screenshot desktop 1440 and
+phone 390, scrolling to each section, and check three things by hand that no
+grep can check: that the roll figure's stage 01 caption is open with no cursor
+on it, that tabbing into the figure shows a visible clay focus ring, and that
+the sparkline is a complete line and not a partial one.
+
+## Acceptance items this session could NOT verify
+
+Read honestly, with the file and the reason:
+
+1. **`npm run build`.** No shell. Everything about TypeScript strict mode,
+   React 19 typings and Tailwind v4 class generation in the three new components
+   is unverified.
+2. **Tailwind emitting `align-[-0.55em]` and `w-[120px]`**
+   (`components/balance-sparkline.tsx:73`). Arbitrary values, expected to work
+   in v4, never compiled here.
+3. **The vector mark rendering through `next/image`**
+   (`components/site-header.tsx:44`). See Failed attempts.
+4. **Nothing below the fold starts at `opacity: 0`** is true
+   (`app/globals.css`, the only `pns-ink-in` call sites are inside
+   `.pns-masthead`), but `.pns-draw` does start the sparkline stroke undrawn for
+   900ms at page load, below the fold on most widths. The base style is the
+   finished line and no observer gates it, so a screenshot at any point after
+   the first second shows the whole path. Called out rather than hidden: it is a
+   judgement call, not a measured result.
+5. **Lighthouse performance and accessibility at 80 or above.** Unmeasured. The
+   page gained two client components; both are tiny and neither fetches.
+6. **The four Phase 8 tombstones** (`components/console-preview.tsx`,
+   `components/loop-stepper.tsx`, `components/reveal.tsx`,
+   `components/copy-chip.tsx`) still need `git rm`. Out of scope for this phase
+   and impossible without a shell.
+7. **Every AFTER screenshot comparison.** Not captured. A surviving diagnosis
+   defect with no Kept row reopens the phase, and only the runner can judge
+   that.
+
+## Open questions
+
+1. **Does the roll figure read as touchable without a cursor on it?** Stage 01
+   is open and stages 02 and 03 are collapsed titles, so the figure looks like a
+   three row list until something hovers it. Nobody has seen it. If it reads as
+   static, the fix is a caret or a plus on the closed rows, not more colour.
+2. **Is the count-up worth keeping?** It counts to 400 in 900ms inside a
+   sentence. On a page this quiet it may read as a glitch rather than an
+   entrance. Deleting the `<FigureCount>` wrapper and printing
+   `{fixtureDeposits}` is a one line change if a real screen says so.
+3. **The landing figures will go stale the same way the tile figures would
+   have.** They are read from `fixtures/vaults.json` at build time, so that
+   half is safe, but "eleven contract tests" and "three levels of market
+   discovery" in the dispatch entries are still prose literals. Nothing guards
+   them. One check in `scripts/seed.mjs` would, and this is the third phase to
+   say so.
+4. **`SUBMISSION.md` names the team as one solo builder.** Still true, still
+   worth correcting before the form if anyone else should be credited.
+5. **`public/brand/og.png` and `app/opengraph-image.png` are the last two
+   pre-identity surfaces.** Both are rasters, both are outside every fence lift
+   granted so far, and neither appears on a page: the OG card only renders
+   inside a link preview. Regenerating them is the only fix and it needs a tool
+   this machine does not have.
+
+## Next best step
+
+Nothing more can be done on this surface without a shell. What is left is the
+deploy and the recording, in this order, and the checklist below is the list.
+
+## Manual submit checklist
+
+Work top to bottom. `DELIVERY.md`, section "Before submitting", is still the
+canonical list; this is the Phase 9 ordering of it with the deadline attached.
+
+1. **Fund the owner wallet before the run, not during it.** STT on chain 50312
+   for deploy gas plus at least `0.05` STT per `startPlan` for subscription
+   funding, and tUSDC through `faucet(10000)` on
+   `0x70a86D8842FB63C4Ad2b7cdddF530eBf1BB25d8E`. If STT is short:
+   https://cloud.google.com/application/web3/faucet/somnia/shannon,
+   https://stakely.io/faucet/somnia-testnet-stt,
+   https://thirdweb.com/somnia-shannon-testnet, or Somnia Discord `#dev-chat`
+   and developers@somnia.foundation.
+2. **Deploy `PerennisVault`** to Shannon (chain 50312,
+   `https://dream-rpc.somnia.network`) with `contracts/script/Deploy.s.sol`.
+3. **Run `contracts/script/Smoke.s.sol`** with `DEPLOYED_CONTRACT` and
+   `COLLATERAL_TOKEN` exported. It reads its target from
+   `vm.envAddress("DEPLOYED_CONTRACT")` at `contracts/script/Smoke.s.sol:68`.
+   One broadcast: faucet, approve for exactly that amount, deposit. It never
+   writes a plan, so it is safe to run before the recording.
+4. **Fill every `EVIDENCE.md` row.** Rows 1, 2, 3, 4, 5, 7, 8 and 9, with row 9
+   the Smoke deposit hash. No row may be left reading `NOT YET FILLED`, and no
+   row may carry a hash that was not read off the chain.
+5. **Set `NEXT_PUBLIC_CONTRACT_ADDRESS` and
+   `NEXT_PUBLIC_BINARY_MARKETS_MODULE`,** so the proof panel stops saying "not
+   configured in this deployment", then **redeploy Vercel to the same project**
+   so `https://perennis-app.vercel.app` does not move.
+6. **Capture `docs/step-1.png` through `docs/step-9.png`** per
+   `docs/SCREENSHOTS.md`, at 1280 and again at 360.
+7. **Record `VIDEO.md`** against a real 15 minute window boundary, with the
+   whole wallet flow on screen, 2 to 3 minutes, one unbroken take for the
+   console band.
+8. **Replace both `PENDING` strings.** Two in `README.md`, two in
+   `SUBMISSION.md`, all four in the same sitting. Grep for
+   `PENDING, filled by a human before submitting`: zero hits means done.
+9. **Make the repository public**, after a full history secret scan comes back
+   clean.
+10. **Submit the BUIDL on DoraHacks before 8 September 2026, 18:00 UTC,** with
+    the video uploaded at least 12 hours earlier.

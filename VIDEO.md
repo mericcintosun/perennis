@@ -38,7 +38,7 @@ of the console take, which is 83 seconds into the finished cut.
 | 0:23 to 0:53 | The position is open | `/console` | `docs/step-2.png`, `docs/step-3.png`, `docs/step-7.png` |
 | 0:53 to 1:23 | The roll, the wow moment | `/console` | `docs/step-4.png`, `docs/step-5.png` |
 | 1:23 to 1:38 | The stop rule | `/console` | `docs/step-6.png` |
-| 1:38 to 2:00 | The landing stepper and the tiles | `/` | `docs/step-8.png` |
+| 1:38 to 2:00 | The roll figure and the dispatch entries | `/` | `docs/step-8.png` |
 | 2:00 to 2:20 | The proof panel and the probe | `/#proof` | `docs/step-9.png` |
 
 The screenshot column is a fallback, not decoration. If a band cannot be
@@ -55,9 +55,12 @@ those files and says what must be in frame for each.
 
 **On screen:**
 
-- The hero: the headline, the mono stat strip reading 1 signature, 0 keepers,
-  the 20 second demo clock and the reactivity precompile `0x…0100`, and the
-  console preview card beside it.
+- The masthead: the headline "Hold a view for four hours. Sign once.", the lead
+  paragraph, the one clay button into the console, and under a hairline the
+  dateline naming Somnia Shannon, chain 50312 and the reactivity precompile
+  `0x…0100`.
+- The annotated roll figure in the right column, with stage 01 "You write the
+  plan" open. It is on screen from frame one and needs no cursor on it.
 - No scrolling and no clicking. Eight seconds of one still frame.
 
 **Narrator says:** "Event Contracts settle every 15 minutes. Holding a view for
@@ -169,32 +172,38 @@ it can be recorded before the chain is up because neither band fetches anything.
 
 ---
 
-## 1:38 to 2:00 of the finished cut, the landing stepper and the tiles
+## 1:38 to 2:00 of the finished cut, the roll figure and the dispatch entries
 
-**Route:** `/`, scrolled to `#how`. This is `DEMO.md` step 8.
+**Route:** `/`, starting at the top and scrolling to `#how`. This is `DEMO.md`
+step 8.
 
 **On screen:**
 
-- The three tab stepper under "How it works". Click 01 Write, then 02 Roll, then
-  03 Halt, letting each panel's mono trace line sit on screen long enough to
-  read: `startPlan(plan, [...]) -> WindowsArmed(3)`, then
-  `_onEvent(MarketResolved) -> RollSettled(...)`, then
-  `_evaluateStops(streak: 2) -> PlanHalted(ConsecutiveLosses)`.
-- Scroll on to the three stat tiles: 3 levels of market discovery, 11 contract
-  tests, 0 keeper transactions.
+- The roll figure in the masthead first. Move the cursor down its three stages,
+  01 "You write the plan", 02 "The block settles", 03 "The vault re-enters",
+  letting each caption open and sit on screen long enough to read. Do not click,
+  hover is enough, and the figure answers a keyboard the same way if you prefer
+  to tab through it.
+- Scroll to "How it works" and let the three dispatch entries pass: write, roll,
+  halt, with the stop rule mark beside the third.
+- Scroll on to "What is running today", and hold on the sentence carrying the
+  balance sparkline long enough for the WON and LOST figures beside it to be
+  readable.
 
-**Narrator says:** "Three steps, and only the first one is yours. Write, roll,
-halt, and each one is a call in the contract rather than a diagram. The numbers
-underneath are the ones you can check in the repository: three fallback levels
-for market discovery, eleven tests on the vault, and zero keeper transactions."
+**Narrator says:** "Three steps, and only the first one is yours. Write, settle,
+re-enter, and every one of those stages is a call inside the contract rather than
+a diagram. Underneath are the numbers you can check in the repository: three
+fallback levels for market discovery, eleven tests on the vault, and zero keeper
+transactions."
 
 **Must not be on screen:** the folded block opened. Leave the details element
 closed. It is there for a reader, not for the video, and opening it on camera
 puts a wall of text in frame.
 
-**Note for the editor:** scroll slowly. The lower sections fade in on their first
-intersection, so a fast scroll can put a section on screen a beat before it is at
-full opacity.
+**Note for the editor:** scroll at whatever speed reads well. Nothing on this
+page waits to be scrolled into view any more, so there is no section that can be
+caught mid fade. The one thing worth pacing is the roll figure: give each stage
+caption about two seconds.
 
 ---
 
@@ -280,7 +289,7 @@ that is already good.
 **Re-record slot.** If exactly one band is bad, re-record that band alone against
 the next window boundary and cut it in. Only bands 0:53 to 1:23 (the roll) and
 0:08 to 0:23 (the signature) depend on a live boundary. The cold open, the
-stepper band and the proof band can be re-shot at any time, on any path, with
+landing band and the proof band can be re-shot at any time, on any path, with
 nothing funded.
 
 | Band re-recorded | Reason | Date |

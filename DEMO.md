@@ -75,9 +75,19 @@ Each step names the route that serves it.
    display face, the lead paragraph, one button into the console, and under a
    hairline the dateline, which is the only monospace line in the first viewport
    and names Somnia Shannon, chain 50312 and the reactivity precompile `0x0100`.
-   Scroll and there is nothing to click through: "How it works" is three numbered
-   dispatch entries, write, roll and halt, each one naming the call in plain
-   language. "What is running today" is three more, and every number lives inside
+   Beside it, in the second column from `lg` up and under the dateline below
+   that, is the annotated roll figure: three stages on hairline rules, write,
+   settle, re-enter, each one drawn as a brand mark and each one a button that
+   opens its own caption on hover or on keyboard focus. Stage 01 is open in the
+   server HTML, so a crawler and a screenshot both get a caption.
+   Scroll and "How it works" is three numbered dispatch entries, write, roll and
+   halt, each one naming the call in plain language, with the stop rule mark
+   beside the third. "What is running today" opens with the figures themselves,
+   read out of `fixtures/vaults.json`: the fixture deposits counting up inside a
+   sentence, Vault 02's balance path drawn as a sparkline inside the sentence
+   that describes it (200 deposited, WON 223.08, LOST 198.08, WON 218.53, 25
+   staked in the open window, so the card reads 193.53), and the queue sentence
+   beside the queue mark. Then three more dispatch entries, every number inside
    its sentence (three levels of market discovery, eleven contract tests, zero
    keeper transactions), with the longer comparison folded away under them.
    Nothing here is signed and nothing is fetched, and every section is visible in
@@ -111,7 +121,7 @@ check.
 | 5 | `explorerTxUrl()` and the `trigger: "reactivity"` field on `RollEntry` |
 | 6 | Vault 03 seeded as `STOPPED` on `consecutive-losses` |
 | 7 | `QueueStrip` in `components/standing-plan-console.tsx`, `discoverEventWindows()` in `lib/markets.ts` |
-| 8 | `app/page.tsx`, `components/dispatch-list.tsx`, `components/brand/marks.tsx` |
+| 8 | `app/page.tsx`, `components/roll-figure.tsx`, `components/balance-sparkline.tsx`, `components/figure-count.tsx`, `components/dispatch-list.tsx`, `components/brand/marks.tsx`, `fixtures/vaults.json` through `lib/data/seed.ts` |
 | 9 | `components/proof-panel.tsx`, `lib/config.ts` |
 
 Steps 1 to 6 keep the numbers they were given in Phase 1. `HANDOFF.md` sections

@@ -10,11 +10,12 @@ Two rows go with one submission and there is no second form to fill in. The
 tracks are at the bottom of this file, with headings byte identical to
 `DELIVERY.md`.
 
-Anything marked `PENDING, filled by a human before submitting` is a gate. The
-same string appears in the Demo table in `README.md` and the two must be
-replaced in the same sitting, because a jury panel has already scored this
-submission down once for a live link that did not answer and a video field that
-was a placeholder.
+The two blocks below that read `PENDING` are gates. The placeholder is one
+string, byte identical to the one in the Demo table in `README.md`, and it
+appears exactly twice in each file: "Demo video link" and "Live demo link" here,
+the live app row and the demo video row there. All four are replaced in the same
+sitting, because a jury panel has already scored this submission down once for a
+live link that did not answer and a video field that was a placeholder.
 
 ---
 
