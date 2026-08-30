@@ -16,6 +16,11 @@ Route: `/console`
 Not the landing page. The recording opens on `/console` with Vault 01 selected
 and the browser already scrolled to the top of the console.
 
+The console header carries the vault address next to the source badge and links
+it to the Shannon explorer whenever `NEXT_PUBLIC_CONTRACT_ADDRESS` is set, so the
+"Live read from Shannon" claim is one click from being checked. With no address
+configured the badge renders alone and says so.
+
 ## The trigger and the wow moment
 
 **Trigger:** the countdown ring on the vault card reaches zero.

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Badge } from "@/components/ui/badge";
+import { Badge, badgeVariants } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -15,7 +15,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { WalletPanel } from "@/components/wallet-panel";
 import { cn } from "@/lib/utils";
-import { CHAIN_ID } from "@/lib/config";
+// Config, not chain code. lib/config.ts imports nothing (not even viem), so
+// pulling VAULT_ADDRESS in here cannot drag the RPC layer into the client
+// bundle. lib/dreamdex.ts, lib/rpc.ts and lib/markets.ts stay server only.
+import { CHAIN_ID, VAULT_ADDRESS } from "@/lib/config";
 import { planDefaults } from "@/lib/data/seed";
 import { parsePlanForm } from "@/lib/schemas";
 import {
@@ -368,11 +371,33 @@ export function StandingPlanConsole({
             </Button>
           ))}
         </div>
-        <Badge variant="outline" className="font-normal">
-          {source === "chain"
-            ? "Live read from Shannon"
-            : "Seed data, no vault address set"}
-        </Badge>
+        {/* The badge says which path this render came from. When a vault is
+            configured the address sits next to it and links out to the
+            explorer, so the claim on screen is one click from being checked.
+            With no address the badge renders alone, exactly as before. */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="outline" className="font-normal">
+            {source === "chain"
+              ? "Live read from Shannon"
+              : "Seed data, no vault address set"}
+          </Badge>
+          {VAULT_ADDRESS ? (
+            <a
+              href={`${explorerBase}/address/${VAULT_ADDRESS}`}
+              target="_blank"
+              rel="noreferrer"
+              title={VAULT_ADDRESS}
+              className={cn(
+                badgeVariants({ variant: "outline" }),
+                // 44px tall below sm, matching every other tap target on this
+                // screen. From sm up it sits back on the badge's own height.
+                "min-h-11 font-mono font-normal underline-offset-4 hover:text-primary hover:underline sm:min-h-0"
+              )}
+            >
+              {shortHash(VAULT_ADDRESS, 10)}
+            </a>
+          ) : null}
+        </div>
       </div>
 
       {sourceNote ? (
