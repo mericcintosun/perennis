@@ -1,19 +1,40 @@
+// The footer is links plus one sentence.
+//
+// It used to carry a paragraph of risk copy and two address rows. Both moved:
+// the addresses are on the proof panel at /#proof (components/proof-panel.tsx),
+// which links each one to the Shannon explorer and says "not configured in this
+// deployment" in words when it is empty, and the risk paragraph is in the folded
+// block on the landing page. Two copies of the same address is one copy that can
+// go stale.
+
 import Image from "next/image";
-import { Separator } from "@/components/ui/separator";
-// Config, not chain code. lib/config.ts imports nothing, so naming the deployed
-// addresses in the footer cannot pull the RPC layer into this module graph.
-import {
-  CHAIN_ID,
-  COLLATERAL_TOKEN,
-  VAULT_ADDRESS,
-} from "@/lib/config";
+// Config, not chain code. lib/config.ts imports nothing, so naming the chain id
+// in the footer cannot pull the RPC layer into this module graph.
+import { CHAIN_ID } from "@/lib/config";
 
 const REPO_URL = "https://github.com/mericcintosun/perennis";
+
+const links = [
+  { label: "Security notes", href: `${REPO_URL}/blob/main/SECURITY.md` },
+  { label: "Source on GitHub", href: REPO_URL },
+  {
+    label: "DreamDEX docs",
+    href: "https://docs.dreamdex.io/developers/event-contracts",
+  },
+  {
+    label: "Somnia reactivity",
+    href: "https://docs.somnia.network/developer/reactivity",
+  },
+  {
+    label: "Shannon explorer",
+    href: "https://shannon-explorer.somnia.network",
+  },
+];
 
 export function SiteFooter() {
   return (
     <footer className="border-t border-border">
-      <div className="mx-auto flex max-w-6xl flex-col gap-4 px-6 py-10 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-10 text-sm text-muted-foreground lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-center gap-3">
           <Image
             src="/logo.svg"
@@ -23,98 +44,33 @@ export function SiteFooter() {
             className="h-5 w-auto opacity-80"
           />
         </div>
+
         <div className="flex flex-wrap gap-x-6 gap-y-2">
-          <a
-            className="hover:text-foreground"
-            href="https://docs.dreamdex.io/developers/event-contracts"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            DreamDEX docs
-          </a>
-          <a
-            className="hover:text-foreground"
-            href="https://docs.somnia.network/developer/reactivity"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Somnia reactivity
-          </a>
-          <a
-            className="hover:text-foreground"
-            href="https://shannon-explorer.somnia.network"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Shannon explorer
-          </a>
-          <a
-            className="hover:text-foreground"
-            href="https://dorahacks.io/hackathon/event-contracts"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Event Contracts Hackathon
-          </a>
+          {links.map((link) => (
+            <a
+              key={link.label}
+              className="inline-flex min-h-11 items-center hover:text-foreground sm:min-h-0"
+              href={link.href}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {link.label}
+            </a>
+          ))}
         </div>
       </div>
 
-      {/*
-        About and Security. It sits in the shared shell, so it is on both / and
-        /console. Small type, and every row wraps rather than pushing a 360px
-        page sideways. An address that is not configured says so in words: the
-        deployed values live in EVIDENCE.md and are filled in by a human.
-      */}
-      <Separator />
-      <div>
-        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-6 py-6 text-xs text-muted-foreground">
-          <p className="font-medium uppercase tracking-wider">About and security</p>
-          <p className="max-w-[70ch]">
-            Perennis is testnet software on Somnia Shannon (chain id {CHAIN_ID}),
-            with tUSDC as collateral. The contract has not been audited and has
-            no upgrade path. Do not point it at money you care about.
-          </p>
-          <dl className="flex flex-wrap gap-x-8 gap-y-2">
-            <FooterAddress label="Vault" address={VAULT_ADDRESS} />
-            <FooterAddress label="Collateral" address={COLLATERAL_TOKEN} />
-          </dl>
-          <div className="flex flex-wrap gap-x-6 gap-y-2">
-            <a
-              className="inline-flex min-h-11 items-center hover:text-foreground sm:min-h-0"
-              href={`${REPO_URL}/blob/main/SECURITY.md`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Security notes
-            </a>
-            <a
-              className="inline-flex min-h-11 items-center hover:text-foreground sm:min-h-0"
-              href={REPO_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Source on GitHub
-            </a>
-          </div>
-        </div>
+      <div className="mx-auto max-w-6xl px-6 pb-8">
+        <p className="text-xs text-muted-foreground">
+          Testnet software on Somnia Shannon (chain {CHAIN_ID}) with tUSDC as
+          collateral, unaudited, with no upgrade path. Contract addresses are in
+          the{" "}
+          <a className="underline underline-offset-4 hover:text-foreground" href="/#proof">
+            proof panel
+          </a>
+          .
+        </p>
       </div>
     </footer>
-  );
-}
-
-function FooterAddress({
-  label,
-  address,
-}: {
-  label: string;
-  address?: string;
-}) {
-  return (
-    <div className="flex flex-wrap items-baseline gap-2">
-      <dt>{label}</dt>
-      <dd className="break-all font-mono" title={address ?? undefined}>
-        {address ?? "not configured in this deployment"}
-      </dd>
-    </div>
   );
 }
