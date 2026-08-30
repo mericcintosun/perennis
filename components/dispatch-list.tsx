@@ -9,6 +9,7 @@
 // Server safe. No state, no handlers, no "use client". The numeral is hidden
 // from assistive technology because the <ol> already carries the ordering.
 
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 export type DispatchEntry = {
@@ -16,6 +17,12 @@ export type DispatchEntry = {
   title: string;
   /** One or two sentences. Every figure in them is checkable in this repo. */
   body: string;
+  /**
+   * An optional brand mark from components/brand/marks.tsx, sitting with the
+   * title. Decorative: the title is what carries the meaning, so the mark is
+   * passed without a `title` prop and stays aria-hidden.
+   */
+  mark?: ReactNode;
 };
 
 export function DispatchList({
@@ -39,7 +46,10 @@ export function DispatchList({
             {String(index + 1).padStart(2, "0")}
           </span>
           <div>
-            <h3 className="font-serif text-lg leading-snug">{entry.title}</h3>
+            <h3 className="flex items-center gap-3 font-serif text-lg leading-snug">
+              {entry.mark}
+              <span>{entry.title}</span>
+            </h3>
             <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
               {entry.body}
             </p>
