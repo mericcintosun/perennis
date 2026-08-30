@@ -21,9 +21,11 @@ RADIUS: sharp. --radius: 0.125rem. rounded-full only on genuinely circular
   geometry (the countdown ring, an outcome dot).
 HEADER: solid sticky masthead. Opaque --background, 1px bottom hairline, no
   translucency, no backdrop-blur.
-MOTION: ink-in. Opacity only, never translateY. One masthead entrance on load
-  plus hairline section rules that draw with scaleX. Nothing below the fold ever
-  starts at opacity 0 and no IntersectionObserver exists in the repo.
+MOTION: ink-in. Never translateY, never a pulse, never a float. One masthead
+  entrance on load (opacity), hairline section rules that draw with scaleX, and
+  one figure stroke that draws with stroke-dashoffset. Three keyframes, no
+  fourth. Nothing below the fold ever starts at opacity 0 and no
+  IntersectionObserver exists in the repo.
 KEYFRAME PREFIX: pns-
 TOKENS (the only colors in this product, all in app/globals.css):
   --background        #16110D
@@ -82,6 +84,30 @@ beside it reads as an accident rather than a decision.
   palette. It is a binary outside the fence lift above, and the alternative (no
   raster at all) would leave the masthead with a wordmark and nothing else. The
   repaint of that raster is Phase 9 work.
+- **2026-08-30, Phase 9.** A narrow, now spent lift of the `Never touch` fence in
+  `CLAUDE.md` for exactly one new file, `public/brand/mark.svg`. The masthead
+  raster `public/brand/logo.png` was drawn against the pre-identity teal palette
+  and reads cool grey-green beside the clay accent at 28px, and a raster is a
+  binary no shell-less session can repaint. The replacement is a vector drawn
+  from the same family rules as `components/brand/marks.tsx` (48 by 48 box,
+  stroke width 2, round caps and joins, `rx="1"`), in three token colours written
+  out as hex because a file served from `public/` cannot read a CSS variable:
+  `#16110D` ground, `#D2622F` and `#F3EAE0` strokes. `public/brand/logo.png` and
+  `public/brand/og.png` stay on disk untouched, `app/opengraph-image.png` was not
+  touched and no `app/opengraph-image.tsx` was added. The ONE MARK rule still
+  holds: the header is one `<Image` plus the word Perennis.
+- **2026-08-30, Phase 9.** The motion system gains a third keyframe,
+  `pns-draw-in`, which animates `stroke-dashoffset` on one decorative figure
+  stroke (the balance sparkline) and nothing else. It is the same idea as
+  `pns-rule-draw`: a line arriving, never the visibility of a value. The base
+  style is the finished line, so animations off, `prefers-reduced-motion:
+  reduce` and a screenshot taken before the animation starts all show the whole
+  path. Three keyframes is the ceiling; a fourth amends this file first.
+- **2026-08-30, Phase 9.** `public/brand/og.png` and `app/opengraph-image.png`
+  are still in the pre-identity palette and are still not repaintable from a
+  shell-less session. They are the last two pre-identity surfaces in the
+  repository. Neither appears on a page: the OG card only renders inside a link
+  preview.
 - **2026-08-30.** `--warning` is kept in the token block as an alias of
   `--negative` so the token table stays complete, but no class name derived from
   it is used anywhere in `app/` or `components/`. Loss and alert surfaces name

@@ -2,11 +2,17 @@
 
 // The masthead.
 //
-// ONE MARK. public/brand/logo.png exists, so it is the mark: one raster at 28px
-// and the word Perennis as text in the display face. The wordmark SVG that used
-// to sit beside it was a second drawing of the same idea, which is why the
-// header showed the logo twice. The wordmark vector under public/ is still on
-// disk for OG reuse and is imported by nothing.
+// ONE MARK. public/brand/mark.svg is the mark: one vector at 28px and the word
+// Perennis as text in the display face. The wordmark SVG that used to sit beside
+// it was a second drawing of the same idea, which is why the header showed the
+// logo twice. The wordmark vector under public/ is still on disk for OG reuse
+// and is imported by nothing.
+//
+// The mark is a vector drawn in the identity palette, not the pre-identity
+// raster at public/brand/logo.png, which stays on disk. `unoptimized` is what
+// lets an svg through next/image without turning on dangerouslyAllowSVG for the
+// whole app: this is our own file in our own public/ directory, and it does not
+// need the optimizer.
 //
 // Opaque, per IDENTITY.md. No translucency and nothing blurred behind it: a
 // broadsheet masthead sits on the paper, it does not float over it.
@@ -35,11 +41,12 @@ export function SiteHeader({ chainId }: { chainId: number }) {
       <div className="mx-auto flex min-h-16 max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-6 py-2 sm:py-0">
         <Link href="/" className="flex items-center gap-3">
           <Image
-            src="/brand/logo.png"
+            src="/brand/mark.svg"
             alt=""
             width={28}
             height={28}
-            className="h-7 w-7 object-contain"
+            unoptimized
+            className="h-7 w-7"
             priority
           />
           <span className="font-serif text-[15px] tracking-wide">Perennis</span>

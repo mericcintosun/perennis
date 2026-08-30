@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" role="img" aria-label="Perennis">
+  <title>Perennis</title>
+  <!-- The masthead mark. Same family rules as components/brand/marks.tsx: a 48
+       by 48 box, stroke width 2, round caps and joins, corner radius 1. The
+       colours are the IDENTITY.md tokens written out, because a file under
+       public/ is served as a static asset and cannot read a CSS variable from
+       the page: #16110D is --background, #D2622F is --primary, #F3EAE0 is
+       --foreground. There is no fourth colour and no gradient. -->
+  <rect width="48" height="48" rx="1" fill="#16110D"/>
+  <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <!-- The ring, with a break at the top right: one window closing. -->
+    <path d="M31.5 11A15 15 0 1 1 24 9" stroke="#F3EAE0"/>
+    <!-- The re-entry arrow diving back in through the gap. -->
+    <path d="M25.5 4.5 31 9.2l-5.2 4.6" stroke="#D2622F"/>
+    <!-- The plan sitting inside the loop, with its one written term. -->
+    <rect x="18" y="18" width="12" height="12" rx="1" stroke="#D2622F"/>
+    <path d="M22 24h4" stroke="#F3EAE0"/>
+  </g>
+</svg>

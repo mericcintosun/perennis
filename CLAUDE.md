@@ -75,6 +75,26 @@ off limits, and anything new on the write path goes through `lib/tx.ts`.
 - `contracts/script/Deploy.s.sol`
 - the settlement logic inside `contracts/src/PerennisVault.sol`
 
+### Fence lift, Phase 9 only, now spent
+
+`public/` is on the never touch list above. Phase 9 was granted a named exception
+for exactly **one new file**, and it is already written:
+
+1. `public/brand/mark.svg`, the masthead mark. Ground `#16110D`, strokes
+   `#D2622F` and `#F3EAE0`, `rx="1"`, 48 by 48 box, stroke width 2, round caps
+   and joins, drawn from the same family rules as `components/brand/marks.tsx`.
+
+Why: `public/brand/logo.png` was drawn against the pre-identity teal palette and
+its ring reads cool beside the clay accent. It is a binary, and no shell-less
+session can repaint a raster. `components/site-header.tsx` now points its one
+`<Image` at the vector, with `unoptimized` so an svg passes through next/image
+without turning on `dangerouslyAllowSVG` for the whole app.
+
+Untouched, and still fenced: `public/brand/logo.png` and `public/brand/og.png`
+stay on disk, `app/opengraph-image.png` was not touched, and no
+`app/opengraph-image.tsx` was added. Nothing else under `public/` was created,
+edited or deleted, `public/__farm.txt` included. The fence is closed again.
+
 ### Fence lift, Phase 8 only, now spent
 
 Phase 8 replaced the palette wholesale, and four vector files carried the dead
@@ -200,8 +220,9 @@ Short version: warm brown-black ground, one clay accent (`--primary`), outcome
 colour through `--positive` and `--negative` with the word WON or LOST always
 beside the figure, square corners at `--radius: 0.125rem`, Fraunces for display,
 IBM Plex Sans for text, IBM Plex Mono for addresses, hashes, market ids and block
-numbers only. There is no amber in this product. Two keyframes exist,
-`pns-ink-in` and `pns-rule-draw`, and there is no IntersectionObserver anywhere.
+numbers only. There is no amber in this product. Three keyframes exist,
+`pns-ink-in`, `pns-rule-draw` and `pns-draw-in` (Phase 9, stroke-dashoffset on
+one figure), and there is no IntersectionObserver anywhere.
 
 Every interactive primitive goes through `components/ui/` with `cn()`, which
 today means `badge`, `button`, `card`, `input`, `alert` (variants `default` and
