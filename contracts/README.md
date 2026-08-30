@@ -26,6 +26,26 @@ cd contracts
 forge build
 ```
 
+## What the tests actually assert
+
+Five functions in `test/PerennisVault.t.sol`. The table says what each one
+checks, not what its name suggests. Every claim below is a `require` in that
+file.
+
+| Test | What it asserts |
+| --- | --- |
+| `test_DepositAndWithdraw` | Approve 200 and deposit it, `balance()` reads 200. Withdraw 50, `balance()` reads 150. Then the token's own `balanceOf(vault)` is checked against that 150, so the vault's internal accounting and the ERC20 ledger have to agree, not just move together. |
+| `test_StartPlanRejectsZeroStake` | `startPlan` with `stakePerWindow: 0` reverts, and the revert selector is `PerennisVault.BadPlan`, not some other failure that happens to revert. Then `status()` is checked to still be 0 (Idle), so a rejected plan leaves no partial state behind. The check fires before the reactivity precompile at `0x0100` is ever called, which is why this case needs no chain. |
+| `testFuzz_DepositThenWithdrawNeverExceedsBalance` | Two `uint96` inputs, each reduced modulo the mock supply. The deposit must credit the full delta. A withdrawal larger than the balance must revert with the `InsufficientBalance` selector and leave `balance()` untouched; one within the balance must debit exactly. Whichever branch ran, the run ends by requiring `token.balanceOf(vault) == vault.balance()`. That last line is the real invariant: the vault can never think it holds more than the token says it holds. |
+| `test_WithdrawRejectsNonOwner` | A separate `NonOwnerCaller` contract, deployed inside the test so it is a different `msg.sender`, calls `withdraw(50)`. The revert selector must be `NotOwner`, and `balance()` must still read 200 afterwards, so a rejected owner check moved no money. |
+| `test_ArmNextRejectsOversizedQueue` | `armNext` is permissionless, so its array is capped at `MAX_QUEUE_ADD`. Nine ids must revert with the `QueueFull` selector, and `pendingWindows()` must still read 0, so a rejected call pushed nothing before it reverted. |
+
+Assertions are plain `require` with no `forge-std` and no cheatcodes, because
+`contracts/lib` does not exist and an import of `forge-std` would break
+`forge build`. The mock ERC20, the mock BinaryMarketsModule and the non owner
+caller are all declared inline in the same file. `npm run test:contracts` from
+the repo root is what runs them (it is `cd contracts && forge test`).
+
 ## Deploy to Shannon testnet
 
 ```bash

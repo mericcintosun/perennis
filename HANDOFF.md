@@ -209,9 +209,11 @@ If the balance requirement blocks you, ask in Somnia Discord `#dev-chat` and at
 `developers@somnia.foundation` in the same hour. Everything below depends on the
 answer, so do not start the UI work until you know.
 
-While you are there, run the DreamDEX bot kit's `npx tsx scripts/doctor.ts`
-against the testnet, call `faucet(10000)` on tUSDC, and read the collateral
-decimals off the chain.
+While you are there, call `faucet(10000)` on tUSDC and read the collateral
+decimals off the chain. The DreamDEX bot kit ships its own `scripts/doctor.ts`,
+which is worth running from that kit's own checkout, but it is not vendored in
+this repo and it is not part of this stack. Do not list it as one. The health
+checks this repo actually ships are named in `DELIVERY.md`.
 
 **Done looks like:** a subscription id returned by the precompile, and a handler
 you wrote firing once on a real event.
@@ -342,8 +344,11 @@ state where it does not compile, even mid task.
 ## 5. Definition of done
 
 - Deployed on Vercel and the URL is live.
-- `README.md` demo links filled in: the Vercel URL and the video URL, with the
-  `<ADD_VIDEO_URL>` placeholder gone.
+- The Demo table at the top of `README.md` filled in: the Vercel URL confirmed
+  answering in a private window, and the video URL replacing the pointer to
+  `VIDEO.md`. The `<ADD_VIDEO_URL>` placeholder was removed in Phase 6.
+- Every slot in `EVIDENCE.md` filled, and its own 60 second verification list
+  walked once by a human.
 - `PerennisVault` deployed on Shannon, the address in `.env.local` and in the
   README, and the console header reading "Live read from Shannon".
 - The 90 second flow above works end to end against a real window, and the roll
@@ -1085,3 +1090,252 @@ that, the two submission artefacts that are not code: the 2 to 3 minute video
 against a real 15 minute window boundary, and the SDK documentation feedback
 report, which should be written straight out of the open questions above while
 the friction is still fresh.
+
+---
+
+## 10. Phase 5 fix ledger
+
+Phase 5 was a jury round, not a build phase. A three juror panel read the repo,
+scored it 4.8 with verdict `fix-then-submit` and confidence low, and all three
+gave User Experience a 3 for the same reason. The panel summary, in its own
+words: "elinde çalışan bir kayıt ve tıklanabilir bir explorer linki olmadan bu
+repo jüri için sadece bir dosya listesi." This section is what was done about it.
+
+### Goal
+
+Apply the first panel's feedback and nothing else. No new features, no new
+routes, no new dependency, no visual redesign. Two things were possible from a
+session with no shell: remove every claim the repo cannot back, and build the
+exact slots the human fills in the last hour so nothing has to be invented under
+deadline.
+
+The demo step this moves is `DEMO.md` step 5. The console header now carries the
+vault address and links it to the Shannon explorer when one is configured, and
+`EVIDENCE.md` names every on chain artefact a judge needs with the recipe to
+produce it. Step 5 stops being something the recorder has to remember to say and
+becomes a link on the screen.
+
+### Status
+
+Written, not executed. Nothing in this session was run: no `npm install`, no
+`npm run build`, no `npm run seed`, no `forge test`, no RPC call, no
+transaction, no wallet dialog, no dev server, no browser at any width. There was
+no shell. Every command dependent claim below is unverified and is the runner's
+to check.
+
+The three blockers every juror raised (no video, a live link that does not
+answer, no on chain evidence) are answered as far as a shell-less session can
+answer them: the recording is fully specified but not recorded, the README no
+longer promises a live link, and the evidence table exists with every slot empty
+and labelled. None of the three is closed. Closing them needs a deploy, a chain
+walk and a screen recorder, and all three are the human's.
+
+### Decisions
+
+- **Empty slots stay empty and labelled.** `EVIDENCE.md` writes `NOT YET FILLED`
+  in every row that needs a chain. The one address it does carry
+  (`0x70a86D8842FB63C4Ad2b7cdddF530eBf1BB25d8E`, tUSDC) was read out of
+  `contracts/README.md`, not invented. A plausible looking hash in that table
+  would be worse than an empty one, because a judge who checks it finds a lie
+  rather than a gap.
+- **The Vercel URL stays in `README.md`, relabelled.** It is `metadataBase` in
+  `app/layout.tsx`, so deleting it would leave the og tags pointing at a URL the
+  README denies. The Demo table now calls it the intended production target and
+  says it is not confirmed answering, and `DELIVERY.md` item 1 gates it on a
+  private window load before it reaches the form.
+- **The 30 second local path sits directly under the demo table.**
+  `npm install && npm run dev`, then `http://localhost:3000/console`, no env
+  vars. A judge who finds the hosted link down still reaches the product in half
+  a minute, which is the difference between a low score and a zero on three
+  criteria.
+- **The explorer anchor reads `VAULT_ADDRESS` from `lib/config.ts`, not from
+  `isWriteConfigured()`.** `lib/config.ts` imports nothing, so the client bundle
+  cannot pick up the RPC layer through it. `lib/dreamdex.ts`, `lib/rpc.ts` and
+  `lib/markets.ts` stay server only and the Phase 3 viem fence stays closed. No
+  new component file: the anchor is an `<a>` carrying `badgeVariants()` from
+  `components/ui/badge.tsx` through `cn()`, because `Badge` renders a `div` and
+  cannot be an anchor.
+- **`DEMO.md` gained a sentence, not a step.** Steps 1 to 8 keep their numbers,
+  because sections 7, 8 and 9 of this file refer to them by number. The new
+  sentence sits under "Where the demo starts".
+- **The `doctor.ts` claim is corrected in two places.** The string was in this
+  file at section 3A, telling the human to run the DreamDEX bot kit's
+  `scripts/doctor.ts`. That instruction is still good advice, it is just not a
+  file in this repository, so section 3A now says so explicitly and `DELIVERY.md`
+  has a table of the four health checks that do ship here. If the BUIDL
+  submission text lists the bot kit as part of this stack, that line is wrong and
+  the fix is on the form, not in the repo.
+- **No new dependency, no new env variable, no new route, no new component file,
+  no new `lib/` module.** The two ask-first items in the fence (a dependency and
+  an env key) never came up, so the safe default held on both.
+
+### Failed attempts
+
+- **Nothing was run, so no error could survive two correction attempts.** This
+  session had no shell, no network and no browser.
+- **The panel's fix rank 1 item is truncated mid sentence.** It ends "sonra roll
+  defterindeki satırın" with no verb. The tail was treated as unknown rather than
+  filled in. What was kept literally: no narration for the first 15 seconds, and
+  the four named things on screen (the mode badge, the plan signed in the wallet,
+  real market ids plus the countdown in the queue strip, the new roll ledger
+  row). Fifteen seconds cannot hold all four, because two of them do not exist
+  until a plan is written, so `VIDEO.md` says plainly which band each lands in
+  and that all four are on camera inside 75 seconds.
+- **The weakest link cannot be closed from here.** The criterion was User
+  Experience, 231 points left on the table, reason: "Bu kriter için elimde
+  değerlendirilecek hiçbir şey yok." Nothing a text file says fixes a juror
+  having no screen to look at. The README section describing the console's
+  anatomy and the explorer anchor are the most a session with no shell can do;
+  the recording is what actually answers it.
+- **Line numbers in the new docs were recomputed by hand.** The explorer anchor
+  moved `QueueStrip` from `:882` to `:907` and `CountdownRing` from `:1105` to
+  `:1130`. Both were re-read out of the file after the edit rather than carried
+  over. If a later phase edits above them, both citations move again.
+
+### Files changed
+
+Added: `VIDEO.md`, `EVIDENCE.md`, `.farm-commits.json`.
+
+Changed: `README.md`, `DEMO.md`, `DELIVERY.md`, `contracts/README.md`,
+`components/standing-plan-console.tsx`, `HANDOFF.md`.
+
+Deleted: nothing. Nothing under `public/`, `contracts/script/`, `app/icon.svg` or
+`app/opengraph-image.png` was touched, the settlement logic in
+`contracts/src/PerennisVault.sol` is byte identical, `fixtures/event-windows.json`
+and `fixtures/vaults.json` are untouched, and there are still two page routes and
+four API routes.
+
+### Commands run
+
+None. This session had no shell. Not `npm install`, not `npm run build`, not
+`npm run seed`, not `npm run demo:reset`, not `npm run test:contracts`, not
+`forge build`, not a single RPC call. Nothing below was executed and nothing
+below is a result.
+
+What the runner should run:
+
+```bash
+npm install            # dependencies are unchanged, this should be a no-op
+npm run build          # must pass with zero TypeScript errors
+npm run seed           # twice, fixtures/seed-manifest.json must be identical
+npm run test:contracts # unchanged this phase, nothing under contracts/ moved
+```
+
+Then redeploy to the same Vercel project as the Phase 1 deploy so the URL does
+not move, open the production URL, and confirm `/console` renders and the header
+badge is correct for whatever `ADAPTER_MODE` is set. With a vault address
+configured, the address should appear next to the badge and its link should open
+the explorer on that address.
+
+### Open questions for the human
+
+1. **Is `https://perennis.vercel.app` still the right URL?** It is in
+   `README.md` and in `metadataBase` in `app/layout.tsx`. If the project moved,
+   both change together.
+2. **Does the fixture fallback take in `VIDEO.md` need to be recorded as
+   insurance?** It costs 90 seconds and it removes the deploy from the critical
+   path of the video deadline. The recommendation is yes, record it first, then
+   record the chain take when the chain is up.
+3. **`EVIDENCE.md` rows 7 and 8.** The BinaryMarketsModule address and the
+   subscription id are not on any of the eight `DEMO.md` steps, but they are what
+   makes rows 1 to 5 reproducible for a judge. Confirm they are worth filling in.
+4. **Should the BUIDL submission text be edited to drop the bot kit line?** The
+   repo side is corrected. The form side is not, and the panel scored the
+   mismatch, not the repo.
+
+### Next best step for Phase 7
+
+The second jury round runs next on the Teslimat tab, and its output is the only
+input to Phase 7. Before it does, the two items that move the most points are
+both the human's and neither is code: deploy the vault to Shannon and fill
+`EVIDENCE.md`, then record `VIDEO.md` against a real window boundary. After that,
+the health strip against live values (section 3F) and the SDK documentation
+feedback report are the remaining engineering items.
+
+---
+
+### The fix ledger
+
+Eleven panel items: ten blockers and the fix rank 1 item. Every one of them
+appears exactly once, marked **applied**, **declined** or **could-not-verify**.
+Nothing vanished silently.
+
+1. **"Demo videosu yok, README'deki video alanı hâlâ yer tutucu."**
+   (sponsor-devrel) **applied**, `VIDEO.md` and `README.md`. The
+   `<ADD_VIDEO_URL>` placeholder is gone from `README.md`, replaced by a Demo
+   table whose video row points at `VIDEO.md` and says the video is not recorded.
+   The video itself is could-not-verify: it needs a screen recorder.
+2. **"Demo videosu yok, README'de yer tutucu duruyor, başvurunun kendi tarifine
+   göre BUIDL formu video istiyor."** (technical) **applied**, `DELIVERY.md`.
+   Item 2 of "Before submitting" now gates the form's video field on a recorded
+   take of `VIDEO.md` that plays in a private window, rather than on trust.
+3. **"Demo videosu yok, oysa başvurunun kendi metni bunu zorunlu sayıyor."**
+   (product) **could-not-verify**. The missing evidence is the recording. A
+   session with no shell, no browser and no screen recorder cannot produce one.
+   What exists instead: `VIDEO.md`, second banded, with a fallback take that
+   needs no chain, so the recording is a 90 second job and not a design job.
+4. **"Canlı demo cevap vermiyor, buna rağmen README canlı link vaat ediyor. Jüri
+   linke tıklar, boş sayfa görür ve üç kriterde birden sıfıra yakın puan
+   verir."** (sponsor-devrel) **applied**, `README.md`. The Demo table calls the
+   Vercel URL the intended production target and says it is not confirmed
+   answering, and directly under it is the 30 second local path
+   (`npm install && npm run dev`, then `http://localhost:3000/console`, no env
+   vars) so a judge who finds the link down still reaches the product.
+5. **"Canlı demo yanıt vermiyor, README ise çalışan bir link vaat ediyor."**
+   (product) **applied**, `DELIVERY.md`. Item 1 of "Before submitting" now
+   requires the production URL to render `/console` in a private window before it
+   goes on the form or into `README.md`. Whether the URL answers is
+   could-not-verify from here: no network.
+6. **"'Üretime yakın bir uygulama' gereksinimini karşılayacak zincir üstü kanıt
+   yok: deploy edilmiş vault adresi, tx hash'i veya explorer linki payload'un
+   hiçbir yerinde geçmiyor."** (sponsor-devrel) **applied**, `EVIDENCE.md` and
+   `components/standing-plan-console.tsx`. `EVIDENCE.md` is a table with one row
+   per artefact, each carrying its explorer URL shape and the `cast` or `forge`
+   recipe, and it closes with a 60 second verification list. The console header
+   now renders the vault address as an explorer link when one is configured. The
+   artefacts themselves are could-not-verify: nothing is deployed.
+7. **"SUBMISSION'da stack olarak beyan edilen bir araç dosya listesinde yok,
+   iddia ile artefakt uyuşmuyor."** (sponsor-devrel, evidence:
+   `dreamdex-bot-kit doctor.ts`) **applied**, `DELIVERY.md` and `HANDOFF.md`.
+   `DELIVERY.md` has a "Health checks this repo actually ships" table naming
+   `GET /api/health`, `npm run seed`, `npm run demo:reset` and
+   `npm run test:contracts`, and says plainly that no bot kit `doctor.ts` is
+   vendored here. Section 3A of this file, the only tracked file the string was
+   in, now says the same.
+8. **The same claim versus artefact finding.** (technical) **applied**, same two
+   files as item 7. Recorded separately because two jurors raised it
+   independently, which is what makes it a submission text problem rather than a
+   repo problem: the fix on the form is the human's, item 4 of the open questions
+   above.
+9. **"test dosyasının adı var, içinde ne olduğunu gösteren tek satır yok."**
+   (technical, criterion note) **applied**, `contracts/README.md` and
+   `README.md`. `contracts/README.md` has a table of all five tests in
+   `contracts/test/PerennisVault.t.sol` saying what each asserts, read off the
+   `require` strings rather than paraphrased from the function names, plus a line
+   on plain `require` with no `forge-std`, inline mocks, and
+   `npm run test:contracts`. The README tech stack section points at it.
+10. **Weakest link, criterion "Kullanıcı deneyimi", 231 points left on the table:
+    "Bu kriter için elimde değerlendirilecek hiçbir şey yok."** (all three
+    jurors) **applied in part**, `README.md`. A "What the console shows" section
+    describes the five parts of `/console`, each traceable to a real symbol, and
+    names the demo clock honestly. This does not close the finding: the juror had
+    nothing to look at, and prose is not a screen. The recording and the deploy
+    are what close it, and both are could-not-verify from here.
+11. **Fix rank 1, artifact "Demo videosu, 0 ile 30. saniye arası ilk sahne":
+    "60 ile 90 saniyelik ekran kaydı çek, deploy beklemeden lokalde de olur.
+    İlk 15 saniyede konuşma yok, ekranda şunlar olsun: konsolun mod rozeti, plan
+    kurma işleminin cüzdanda imzalanması, kuyruk şeridinde gerçek marketId'ler ve
+    geri sayım, sonra roll defterindeki satırın"** (payload truncated mid
+    sentence) **applied**, `VIDEO.md`. Four second banded sections (0-15, 15-45,
+    45-75, 75-90), each naming the route, what is on screen, what the narrator
+    says and what must not be on screen. The 0 to 15 band carries the requirement
+    literally: no narration, and the mode badge plus the plan signature on
+    screen. The other two named items land in bands 2 and 3, which the file says
+    out loud, because a queue strip and a ledger row cannot exist before a plan
+    is written. The file also carries a "before you hit record" list, the local
+    fallback take the item asks for ("deploy beklemeden lokalde de olur"), and a
+    line for a late roll. The truncated tail was left unfilled.
+
+Nothing was declined. No panel item this round asked for a new feature, so the
+wording "jüri önerisi, kapsam dışı: yeni özellik" was not needed and is not used
+above.
