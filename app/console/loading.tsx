@@ -34,7 +34,7 @@ export function ConsoleSkeleton() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-5">
-        <div className="space-y-4 rounded-xl border border-border bg-card p-6 lg:col-span-2">
+        <div className="space-y-4 rounded-[2px] border border-border bg-card p-6 lg:col-span-2">
           <Skeleton className="h-5 w-32" />
           <Skeleton className="h-4 w-full" />
           <div className="grid grid-cols-1 gap-3 pt-2 sm:grid-cols-2">
@@ -48,7 +48,7 @@ export function ConsoleSkeleton() {
         </div>
 
         <div className="space-y-6 lg:col-span-3">
-          <div className="space-y-6 rounded-xl border border-border bg-card p-6">
+          <div className="space-y-6 rounded-[2px] border border-border bg-card p-6">
             <div className="flex flex-wrap items-center gap-8">
               <Skeleton className="size-[104px] shrink-0 rounded-full" />
               {/* Same breakpoints as the real stat row, so nothing jumps when
@@ -76,7 +76,7 @@ export function ConsoleSkeleton() {
             </div>
           </div>
 
-          <div className="space-y-4 rounded-xl border border-border bg-card p-6">
+          <div className="space-y-4 rounded-[2px] border border-border bg-card p-6">
             <Skeleton className="h-5 w-28" />
             <Skeleton className="h-12 w-full" />
             <Skeleton className="h-12 w-full" />

@@ -8,6 +8,7 @@
 // <body> and imports the tokens itself: the layout that normally pulls
 // globals.css in is the thing this boundary is standing in for. Colors stay in
 // app/globals.css, this file only names the variables.
+import { Button } from "@/components/ui/button";
 import "./globals.css";
 
 export default function GlobalError({ reset }: { error: Error; reset: () => void }) {
@@ -25,27 +26,22 @@ export default function GlobalError({ reset }: { error: Error; reset: () => void
           background: "var(--background)",
           color: "var(--foreground)",
           fontFamily:
-            'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+            'var(--font-text), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
         }}
       >
-        <h2 style={{ fontSize: "1.25rem", fontWeight: 600, margin: 0 }}>
-          Perennis hit a problem
-        </h2>
-        <button
-          onClick={() => reset()}
+        <h2
           style={{
-            border: 0,
-            borderRadius: "0.5rem",
-            padding: "0.5rem 1.25rem",
-            fontSize: "0.875rem",
-            fontWeight: 500,
-            background: "var(--primary)",
-            color: "var(--primary-foreground)",
-            cursor: "pointer",
+            fontFamily: "var(--font-display), ui-serif, Georgia, serif",
+            fontSize: "1.5rem",
+            fontWeight: 600,
+            margin: 0,
           }}
         >
-          Try again
-        </button>
+          Perennis hit a problem
+        </h2>
+        {/* Through the same primitive every other control on the site uses, so
+            this boundary cannot drift into a browser default button. */}
+        <Button onClick={() => reset()}>Try again</Button>
       </body>
     </html>
   );

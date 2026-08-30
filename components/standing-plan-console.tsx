@@ -374,11 +374,11 @@ export function StandingPlanConsole({
               {v.label}
               <span
                 className={cn(
-                  "size-1.5 rounded-full",
+                  "size-1.5 rounded-[1px]",
                   v.status === "ACTIVE"
                     ? "bg-primary"
                     : v.status === "STOPPED"
-                      ? "bg-warning"
+                      ? "bg-negative"
                       : "bg-muted-foreground"
                 )}
               />
@@ -506,7 +506,7 @@ export function StandingPlanConsole({
                   </div>
                 </div>
 
-                <div className="space-y-3 rounded-lg border border-border bg-secondary/40 p-4">
+                <div className="space-y-3 rounded-[2px] border border-border bg-secondary/40 p-4">
                   <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Stop rules, enforced by the contract
                   </p>
@@ -683,7 +683,7 @@ export function StandingPlanConsole({
                     label="Realised PnL"
                     value={`${pnl >= 0 ? "+" : ""}${formatUsd(pnl)}`}
                     suffix="USDso"
-                    tone={pnl >= 0 ? "primary" : "warning"}
+                    tone={pnl >= 0 ? "positive" : "negative"}
                   />
                   <Stat
                     label="Win rate"
@@ -694,7 +694,7 @@ export function StandingPlanConsole({
               </div>
 
               {openWindow ? (
-                <div className="rounded-lg border border-border bg-secondary/40 p-4">
+                <div className="rounded-[2px] border border-border bg-secondary/40 p-4">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <p className="text-sm font-medium">{openWindow.question}</p>
                     <Badge variant="outline" className="font-normal">
@@ -737,12 +737,12 @@ export function StandingPlanConsole({
                   {checks.map((check) => (
                     <div
                       key={check.id}
-                      className="flex items-start gap-2.5 rounded-md border border-border bg-secondary/30 px-3 py-2"
+                      className="flex items-start gap-2.5 rounded-[2px] border border-border bg-secondary/30 px-3 py-2"
                     >
                       <span
                         className={cn(
-                          "mt-1.5 size-1.5 shrink-0 rounded-full",
-                          check.ok ? "bg-primary" : "bg-warning"
+                          "mt-1.5 size-1.5 shrink-0 rounded-[1px]",
+                          check.ok ? "bg-positive" : "bg-negative"
                         )}
                       />
                       <div className="min-w-0">
@@ -802,11 +802,13 @@ export function StandingPlanConsole({
                       ) : null}
                       <span
                         className={cn(
+                          // The one circle left in the ledger, and one of the two
+                          // places rounded-full is allowed at all.
                           "relative mt-1.5 size-3.5 shrink-0 rounded-full border-2 bg-card",
                           entry.outcome === "WON"
-                            ? "border-primary"
+                            ? "border-positive"
                             : entry.outcome === "LOST"
-                              ? "border-warning"
+                              ? "border-negative"
                               : "border-muted-foreground"
                         )}
                       />
@@ -817,16 +819,19 @@ export function StandingPlanConsole({
                             {entry.direction === "UP" ? "Up" : "Down"} at{" "}
                             {entry.entryCents}c
                           </p>
+                          {/* The word comes first and the figure follows it, so
+                              the outcome is never carried by hue alone. */}
                           <p
                             className={cn(
                               "tabular text-sm font-medium",
                               entry.outcome === "WON"
-                                ? "text-primary"
+                                ? "text-positive"
                                 : entry.outcome === "LOST"
-                                  ? "text-warning"
+                                  ? "text-negative"
                                   : "text-muted-foreground"
                             )}
                           >
+                            {entry.outcome}{" "}
                             {entry.outcome === "LOST" ? "-" : "+"}
                             {formatUsd(
                               entry.outcome === "LOST" ? entry.stake : entry.payout
@@ -847,14 +852,11 @@ export function StandingPlanConsole({
                               sender of the transaction that emitted RollSettled
                               is compared against owner() on the vault, so this
                               badge is the claim DEMO.md step 5 makes on camera. */}
+                          {/* A bordered square chip. The two words carry the
+                              whole meaning, so neither branch needs a tint. */}
                           <Badge
                             variant="outline"
-                            className={cn(
-                              "px-2 py-0 font-normal",
-                              entry.trigger === "reactivity"
-                                ? "border-primary/40 text-primary"
-                                : "border-border text-muted-foreground"
-                            )}
+                            className="border-border px-2 py-0 font-normal text-muted-foreground"
                           >
                             {entry.trigger === "reactivity"
                               ? "validator call"
@@ -896,7 +898,7 @@ export function StandingPlanConsole({
 export function VaultEmptyState({ vault }: { vault: Vault }) {
   const idle = vault.status === "IDLE";
   return (
-    <div className="flex flex-col items-center gap-4 rounded-lg border border-dashed border-border px-6 py-10 text-center">
+    <div className="flex flex-col items-center gap-4 rounded-[2px] border border-dashed border-border px-6 py-10 text-center">
       <Image
         src="/illustrations/roll-loop.svg"
         alt=""
@@ -962,7 +964,7 @@ export function QueueStrip({
       </div>
 
       {shown.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border px-4 py-6 text-center">
+        <div className="rounded-[2px] border border-dashed border-border px-4 py-6 text-center">
           <p className="text-sm font-medium">The queue is dry</p>
           <p className="mx-auto mt-1 max-w-[52ch] text-sm text-muted-foreground">
             Arm 3 more windows and the vault refills it, permissionlessly. Any
@@ -980,7 +982,7 @@ export function QueueStrip({
               return (
                 <li
                   key={`${marketId}-${i}`}
-                  className="flex items-start gap-2.5 rounded-md border border-border bg-secondary/30 px-3 py-2"
+                  className="flex items-start gap-2.5 rounded-[2px] border border-border bg-secondary/30 px-3 py-2"
                 >
                   <span className="tabular mt-0.5 shrink-0 text-xs font-semibold text-primary">
                     {i + 1}
@@ -1025,7 +1027,7 @@ export function QueueStrip({
 /** No rolls yet. The call to action is what makes the first row appear. */
 export function LedgerEmptyState({ vault }: { vault: Vault }) {
   return (
-    <div className="rounded-lg border border-dashed border-border px-4 py-8 text-center">
+    <div className="rounded-[2px] border border-dashed border-border px-4 py-8 text-center">
       <p className="text-sm font-medium">No rolls yet</p>
       <p className="mx-auto mt-1 max-w-[46ch] text-sm text-muted-foreground">
         {vault.status === "ACTIVE"
@@ -1097,7 +1099,7 @@ function TransactionPreview({
           ];
 
   return (
-    <div className="space-y-4 rounded-lg border border-border bg-secondary/40 p-4">
+    <div className="space-y-4 rounded-[2px] border border-border bg-secondary/40 p-4">
       <div className="space-y-3">
         <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
           What the next click sends
@@ -1105,7 +1107,7 @@ function TransactionPreview({
         <ol className="space-y-2 text-xs text-muted-foreground">
           {lines.map((line, i) => (
             <li key={line} className="flex gap-2.5">
-              <span className="shrink-0 font-mono text-foreground">{i + 1}.</span>
+              <span className="tabular shrink-0 text-foreground">{i + 1}.</span>
               <span>{line}</span>
             </li>
           ))}
@@ -1226,7 +1228,7 @@ function SummaryRow({
       <dd
         className={cn(
           "tabular text-right font-medium",
-          alert ? "text-warning" : "text-foreground"
+          alert ? "text-negative" : "text-foreground"
         )}
       >
         {value}
@@ -1245,7 +1247,7 @@ function Stat({
   label: string;
   value: string;
   suffix?: string;
-  tone?: "primary" | "warning";
+  tone?: "positive" | "negative";
   compact?: boolean;
 }) {
   return (
@@ -1255,10 +1257,10 @@ function Stat({
         className={cn(
           "tabular font-semibold",
           compact ? "text-lg" : "text-2xl",
-          tone === "primary"
-            ? "text-primary"
-            : tone === "warning"
-              ? "text-warning"
+          tone === "positive"
+            ? "text-positive"
+            : tone === "negative"
+              ? "text-negative"
               : "text-foreground"
         )}
       >
@@ -1274,10 +1276,9 @@ function Stat({
 function StatusBadge({ vault }: { vault: Vault }) {
   if (vault.status === "ACTIVE") {
     return (
-      <Badge className="gap-2">
-        <span className="size-1.5 rounded-full bg-primary-foreground pulse-dot" />
-        Running
-      </Badge>
+      // One word. The dot that used to breathe beside it said nothing the word
+      // does not say.
+      <Badge>Running</Badge>
     );
   }
   if (vault.status === "IDLE") {
@@ -1289,8 +1290,8 @@ function StatusBadge({ vault }: { vault: Vault }) {
       className={cn(
         "max-w-[16rem] whitespace-normal text-right font-normal",
         vault.status === "STOPPED"
-          ? "border-warning/50 text-warning"
-          : "border-primary/50 text-primary"
+          ? "border-negative/50 text-negative"
+          : "border-border text-muted-foreground"
       )}
     >
       {stopReasonLabel(vault.stopReason)}

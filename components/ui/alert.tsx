@@ -3,14 +3,15 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 // Two variants and no more. "default" is a neutral notice on the card surface,
-// "warning" is the amber one, and amber stays reserved for stop rules, loss
-// states and a degraded data path. Every color here is a token from
-// app/globals.css: --border, --card, --card-foreground, --warning.
-const alertVariants = cva("rounded-lg border px-4 py-3 text-sm", {
+// "warning" is the one that names a stop rule, a loss state or a degraded data
+// path. There is no amber in this product, so that variant is painted with
+// --negative. Every color here is a token from app/globals.css: --border,
+// --card, --card-foreground, --negative.
+const alertVariants = cva("rounded-[2px] border px-4 py-3 text-sm", {
   variants: {
     variant: {
       default: "border-border bg-card text-card-foreground",
-      warning: "border-warning/40 bg-warning/10 text-warning",
+      warning: "border-negative/40 bg-negative/10 text-negative",
     },
   },
   defaultVariants: { variant: "default" },

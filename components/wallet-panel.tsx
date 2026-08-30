@@ -46,19 +46,19 @@ export function WalletPanel({
   onSwitchNetwork,
 }: Props) {
   return (
-    <div className="mb-6 rounded-lg border border-border bg-card p-4">
+    <div className="mb-6 rounded-[2px] border border-border bg-card p-4">
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
         <div className="flex min-w-0 items-center gap-2.5">
           <span
             className={cn(
-              "size-1.5 shrink-0 rounded-full",
+              "size-1.5 shrink-0 rounded-[1px]",
               state.kind === "idle" || state.kind === "tx-confirmed"
-                ? "bg-primary"
+                ? "bg-positive"
                 : state.kind === "tx-pending"
-                  ? "bg-primary pulse-dot"
+                  ? "bg-primary"
                   : state.kind === "disconnected" || state.kind === "connecting"
                     ? "bg-muted-foreground"
-                    : "bg-warning"
+                    : "bg-negative"
             )}
           />
           <p className="text-sm font-medium">{walletStateLabel(state)}</p>
@@ -146,7 +146,7 @@ function WrongNetworkBranch({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <p className="max-w-[42ch] text-xs text-warning">
+      <p className="max-w-[42ch] text-xs text-negative">
         Your wallet is on chain {state.chainId}. Perennis writes to Somnia
         Shannon, chain {expectedChainId}.
       </p>
@@ -206,7 +206,7 @@ function TxConfirmedBranch({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <p className="text-xs text-primary">
+      <p className="text-xs text-positive">
         {state.label} landed. The console re-read the vault off the chain.
       </p>
       <ExplorerLink hash={state.hash} explorerBase={explorerBase} />
@@ -239,7 +239,7 @@ function TxFailedBranch({
     <div className="flex flex-wrap items-center gap-3">
       {/* Distinct from tx-rejected: this one may have spent gas, so the copy
           points at the chain rather than at the wallet. */}
-      <p className="max-w-[46ch] text-xs text-warning">{state.hint}</p>
+      <p className="max-w-[46ch] text-xs text-negative">{state.hint}</p>
       <AddressBadge address={state.address} />
     </div>
   );
