@@ -36,7 +36,7 @@ import {
 } from "./config";
 import { eventWindows } from "./data/seed";
 import { classify, coreFailure, failureNote } from "./errors";
-import { logCore } from "./log";
+import { logCore, logCoreWarn } from "./log";
 import { publicClient, withTimeoutAndRetry } from "./rpc";
 import type {
   ApiResponse,
@@ -199,7 +199,7 @@ async function loadSdk(): Promise<MarketsSdkModule | null> {
   } catch {
     // Not installed, or installed and unloadable. Either way this is the
     // fallback's job and not an error the page should ever see.
-    logCore("markets sdk unavailable", { package: SDK_PACKAGE });
+    logCoreWarn("markets sdk unavailable", { package: SDK_PACKAGE });
     return null;
   }
 }
@@ -251,7 +251,7 @@ async function windowsFromSdk(sdk: MarketsSdkModule): Promise<EventWindow[]> {
     // whatever order the module happened to answer in.
     return mapped.sort((a, b) => a.locksAt.localeCompare(b.locksAt));
   } catch (error) {
-    logCore("chain read failed", {
+    logCoreWarn("chain read failed", {
       step: "markets sdk read",
       code: classify(error),
     });
@@ -407,7 +407,7 @@ async function windowsFromMarketIds(): Promise<EventWindow[] | null> {
       };
     });
   } catch (error) {
-    logCore("chain read failed", {
+    logCoreWarn("chain read failed", {
       step: "market states read",
       code: classify(error),
     });
