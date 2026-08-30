@@ -12,7 +12,7 @@ submission goes on the form, and until then they say so.
 
 | What | Status today | Where |
 | --- | --- | --- |
-| Live app | The intended production target. Not confirmed answering. It goes on the DoraHacks form only after it loads `/console` in a private window. | https://perennis.vercel.app |
+| Live app | The intended production target. https://perennis-app.vercel.app. It goes on the DoraHacks form only after it loads `/console` in a private window. | https://perennis.vercel.app |
 | Demo video | Not recorded. The 90 second shot list is written, second banded and rehearsable. | [VIDEO.md](VIDEO.md) |
 | On chain proof | Not deployed. One row per artefact, every slot empty and labelled, with the recipe to produce it. | [EVIDENCE.md](EVIDENCE.md) |
 
