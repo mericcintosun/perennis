@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { ConsolePreview } from "@/components/console-preview";
+import { ProofPanel } from "@/components/proof-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -64,10 +66,21 @@ const shipped = [
   },
 ];
 
+/** The small uppercase label the console uses over each block, reused here so
+ *  the page reads as a sequence of sections rather than one scroll of prose. */
+function Eyebrow({ children }: { children: string }) {
+  return (
+    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+      {children}
+    </p>
+  );
+}
+
 export default function Home() {
   return (
     <div>
-      {/* Hero */}
+      {/* Hero. The product is on screen before the fold: copy on the left, a
+          static picture of /console on the right, one button into it. */}
       <section className="relative overflow-hidden border-b border-border">
         <Image
           src="/brand/og.png"
@@ -80,29 +93,51 @@ export default function Home() {
           aria-hidden
           className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-background/90"
         />
-        <div className="relative mx-auto max-w-6xl px-6 py-24 sm:py-32">
-          <Badge variant="outline" className="mb-6 font-normal">
-            DreamDEX Event Contracts on Somnia
-          </Badge>
-          <h1 className="max-w-3xl text-4xl font-semibold leading-[1.08] tracking-tight sm:text-6xl">
-            Write the plan once.
-            <br />
-            The vault keeps trading it.
-          </h1>
-          <p className="mt-6 max-w-[68ch] text-lg leading-relaxed text-muted-foreground">
-            Event Contracts settle every 15 minutes. Holding a view for one
-            afternoon means coming back sixteen times to redeem and re-enter.
-            Perennis takes that plan once, then redeems and rolls itself at every
-            settlement, with your stop rules written in as contract terms.
-          </p>
+        <div className="relative mx-auto max-w-6xl px-6 py-20 sm:py-24">
+          <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,27rem)]">
+            <div>
+              <Badge variant="outline" className="mb-6 font-normal">
+                DreamDEX Event Contracts on Somnia
+              </Badge>
+              <h1 className="max-w-3xl text-4xl font-semibold leading-[1.08] tracking-tight sm:text-6xl">
+                Write the plan once.
+                <br />
+                The vault keeps trading it.
+              </h1>
+              <p className="mt-6 max-w-[68ch] text-lg leading-relaxed text-muted-foreground">
+                Event Contracts settle every 15 minutes. Holding a view for one
+                afternoon means coming back sixteen times to redeem and
+                re-enter. Perennis takes that plan once, then redeems and rolls
+                itself at every settlement, with your stop rules written in as
+                contract terms.
+              </p>
 
-          <div className="mt-9 flex flex-wrap items-center gap-4">
-            <Button asChild size="lg">
-              <Link href="/console">Write a standing plan</Link>
-            </Button>
-            <Button asChild size="lg" variant="ghost">
-              <a href="#how">See how the roll works</a>
-            </Button>
+              {/* One primary action. The second link is text, so there is no
+                  question which button starts the demo. */}
+              <div className="mt-9 space-y-3">
+                <Button asChild size="lg">
+                  <Link href="/console">Write a standing plan</Link>
+                </Button>
+                <p className="text-sm text-muted-foreground">
+                  <a
+                    className="underline underline-offset-4 hover:text-foreground"
+                    href="#how"
+                  >
+                    See how the roll works
+                  </a>{" "}
+                  first, or read the{" "}
+                  <a
+                    className="underline underline-offset-4 hover:text-foreground"
+                    href="#proof"
+                  >
+                    contract addresses
+                  </a>{" "}
+                  at the bottom of this page.
+                </p>
+              </div>
+            </div>
+
+            <ConsolePreview />
           </div>
 
           {/* "Same block as settlement, no gap to re-enter" needs more than a
@@ -129,7 +164,8 @@ export default function Home() {
         <div className="mx-auto max-w-6xl px-6 py-20 sm:py-24">
           <div className="grid gap-12 lg:grid-cols-[1fr_auto] lg:items-start">
             <div className="max-w-[68ch]">
-              <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+              <Eyebrow>How it works</Eyebrow>
+              <h2 className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
                 Three steps, and only the first one is yours
               </h2>
               <p className="mt-3 text-muted-foreground">
@@ -143,7 +179,7 @@ export default function Home() {
                       {s.step}
                     </span>
                     <div className="space-y-2">
-                      <h3 className="font-medium">{s.title}</h3>
+                      <h3 className="text-base font-medium">{s.title}</h3>
                       <p className="text-sm leading-relaxed text-muted-foreground">
                         {s.body}
                       </p>
@@ -151,7 +187,7 @@ export default function Home() {
                   </div>
                 ))}
               </div>
-              <Button asChild className="mt-10">
+              <Button asChild variant="outline" className="mt-10">
                 <Link href="/console">Open the console</Link>
               </Button>
             </div>
@@ -167,35 +203,42 @@ export default function Home() {
       </section>
 
       {/* Differentiation */}
-      <section className="mx-auto max-w-6xl px-6 py-20 sm:py-24">
-        <div className="max-w-[68ch]">
-          <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            What Perennis is not
-          </h2>
-          <p className="mt-3 text-muted-foreground">
-            Rolling a position is an old problem. Three things already try to
-            solve it, and each one leaves something running or someone waiting.
-          </p>
-        </div>
-        <div className="mt-10 grid gap-5 md:grid-cols-3">
-          {comparisons.map((c) => (
-            <Card key={c.label}>
-              <CardContent className="space-y-3 p-6">
-                <p className="text-sm font-medium text-primary">{c.label}</p>
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  {c.body}
-                </p>
-              </CardContent>
-            </Card>
-          ))}
+      <section className="border-b border-border">
+        <div className="mx-auto max-w-6xl px-6 py-20 sm:py-24">
+          <div className="max-w-[68ch]">
+            <Eyebrow>Prior art</Eyebrow>
+            <h2 className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
+              What Perennis is not
+            </h2>
+            <p className="mt-3 text-muted-foreground">
+              Rolling a position is an old problem. Three things already try to
+              solve it, and each one leaves something running or someone
+              waiting.
+            </p>
+          </div>
+          <div className="mt-10 grid gap-5 md:grid-cols-3">
+            {comparisons.map((c) => (
+              <Card key={c.label}>
+                <CardContent className="space-y-3 p-6">
+                  <h3 className="text-base font-medium text-primary">
+                    {c.label}
+                  </h3>
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    {c.body}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       </section>
 
       {/* Risk */}
-      <section className="border-t border-border bg-card/40">
+      <section className="border-b border-border bg-card/40">
         <div className="mx-auto max-w-6xl px-6 py-20 sm:py-24">
           <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
-            <div className="max-w-[62ch] space-y-4">
+            <div className="max-w-[68ch] space-y-4">
+              <Eyebrow>Risk</Eyebrow>
               <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
                 The stops are the product
               </h2>
@@ -228,10 +271,11 @@ export default function Home() {
 
       {/* What shipped. Written after the build, so every line below names
           something that exists in this repo rather than something planned. */}
-      <section className="border-t border-border">
+      <section className="border-b border-border">
         <div className="mx-auto max-w-6xl px-6 py-20 sm:py-24">
           <div className="max-w-[68ch]">
-            <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+            <Eyebrow>What shipped</Eyebrow>
+            <h2 className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
               What is running today
             </h2>
             <p className="mt-3 text-muted-foreground">
@@ -246,9 +290,9 @@ export default function Home() {
               <li key={item.title}>
                 <Card className="h-full">
                   <CardContent className="space-y-2 p-6">
-                    <p className="text-sm font-medium text-primary">
+                    <h3 className="text-base font-medium text-primary">
                       {item.title}
-                    </p>
+                    </h3>
                     <p className="text-sm leading-relaxed text-muted-foreground">
                       {item.body}
                     </p>
@@ -258,6 +302,9 @@ export default function Home() {
             ))}
           </ul>
 
+          {/* The closing CTA. It is filled rather than outlined because it is
+              screens away from the hero, so there is no second primary action
+              competing in the same view. */}
           <div className="mt-10 flex flex-wrap items-center gap-4">
             <Button asChild size="lg">
               <Link href="/console">Open the console</Link>
@@ -266,6 +313,27 @@ export default function Home() {
               The console is where the demo starts. With no addresses configured
               it runs on the fixture set and says so on the badge.
             </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Proof, DEMO.md step 9. The addresses and the probe a judge needs to
+          check the chain claim, on the page rather than in a markdown file. */}
+      <section id="proof" className="scroll-mt-20">
+        <div className="mx-auto max-w-6xl px-6 py-20 sm:py-24">
+          <div className="max-w-[68ch]">
+            <Eyebrow>Proof</Eyebrow>
+            <h2 className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
+              Check the chain claim yourself
+            </h2>
+            <p className="mt-3 text-muted-foreground">
+              Three addresses and one probe. If the console says it is reading
+              Shannon, these are the contracts it is reading and this is where
+              you confirm it.
+            </p>
+          </div>
+          <div className="mt-10">
+            <ProofPanel />
           </div>
         </div>
       </section>
