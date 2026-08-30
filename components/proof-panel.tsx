@@ -8,9 +8,7 @@
 // nothing at all, not even viem, so no chain code enters this module graph and
 // this stays a plain server component.
 
-import { CopyChip } from "@/components/copy-chip";
-import { Card, CardContent } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import { AddressCopy } from "@/components/address-copy";
 import {
   BINARY_MARKETS_MODULE,
   CHAIN_ID,
@@ -48,13 +46,13 @@ const addresses = [
 
 export function ProofPanel() {
   return (
-    <Card>
-      <CardContent className="space-y-6 p-6 sm:p-8">
-        <dl className="space-y-4">
+    <div className="border-t border-border">
+      <div className="space-y-8 py-8">
+        <dl className="space-y-0">
           {addresses.map((row) => (
             <div
               key={row.label}
-              className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-baseline sm:justify-between sm:gap-x-6"
+              className="flex flex-col gap-1 border-b border-border py-4 first:pt-0 sm:flex-row sm:flex-wrap sm:items-baseline sm:justify-between sm:gap-x-6"
             >
               <div className="min-w-0">
                 <dt className="text-sm font-medium">{row.label}</dt>
@@ -81,9 +79,7 @@ export function ProofPanel() {
           ))}
         </dl>
 
-        <Separator />
-
-        <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-baseline sm:justify-between sm:gap-x-6">
+        <div className="flex flex-col gap-1 border-b border-border pb-8 sm:flex-row sm:flex-wrap sm:items-baseline sm:justify-between sm:gap-x-6">
           <div className="min-w-0">
             <p className="text-sm font-medium">The readiness probe</p>
             <p className="text-xs text-muted-foreground">
@@ -91,20 +87,18 @@ export function ProofPanel() {
               the fixture set, and which level of market discovery answered.
             </p>
           </div>
-          {/* Open it, or copy the path and curl it. The chip says "Copied" in
+          {/* Open it, or copy the path and curl it. The control says "Copied" in
               words rather than swapping an icon nobody was looking at. */}
           <div className="flex flex-wrap items-center gap-3">
             <a
-              className="inline-flex min-h-11 items-center font-mono text-xs underline underline-offset-4 hover:text-primary sm:min-h-0"
+              className="inline-flex min-h-11 items-center text-xs underline underline-offset-4 hover:text-primary sm:min-h-0"
               href="/api/health"
             >
               GET /api/health
             </a>
-            <CopyChip value="/api/health" label="Copy path" />
+            <AddressCopy value="/api/health" label="Copy path" />
           </div>
         </div>
-
-        <Separator />
 
         <p className="max-w-[68ch] text-xs leading-relaxed text-muted-foreground">
           The deploy transaction, the startPlan hash and the RollSettled hash
@@ -123,7 +117,7 @@ export function ProofPanel() {
           configured, this deployment is running on the fixture set and the
           console badge says the same thing.
         </p>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
