@@ -85,8 +85,111 @@ body {
   animation: perennis-pulse 2s ease-in-out infinite;
 }
 
+/* --- the Phase 9 motion system ------------------------------------------
+   Four keyframes and one reveal pair. Every helper class below is named after
+   the keyframe it runs, so the reduced motion block at the bottom of this file
+   can name each one and a reader can see at a glance that nothing was missed.
+
+   Stagger is a custom property rather than a class per step: a component writes
+   style={{ "--delay": "160ms" }} and animation-delay reads it, so there is no
+   ladder of .delay-1 .delay-2 utilities to keep in sync.
+
+   Nothing on this page depends on an animation to be readable. Every animated
+   element is in the server HTML with its text, and the reduced motion block
+   below leaves all of it visible and still. */
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+  from {
+    transform: translateY(-6px);
+  }
+  to {
+    transform: translateY(6px);
+  }
+}
+
+@keyframes glow-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.75;
+  }
+}
+
+@keyframes caret-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Hero entrance. Starts hidden and ends visible, hence `forwards`. */
+.fade-up {
+  opacity: 0;
+  animation: fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: var(--delay, 0ms);
+}
+
+/* The hero mark. Alternate, so 6s is one full up and down. */
+.float {
+  animation: float 6s ease-in-out infinite alternate;
+}
+
+/* A soft breathing wash behind the hero mark. Decorative only. */
+.glow-pulse {
+  animation: glow-pulse 4s ease-in-out infinite;
+}
+
+/* The block caret on the console preview chrome. */
+.caret-blink {
+  animation: caret-blink 1.1s steps(1, end) infinite;
+}
+
+/* Scroll reveal. components/reveal.tsx adds .reveal-in once the element is on
+   screen and then disconnects its observer. */
+.reveal {
+  opacity: 0;
+  transform: translateY(14px);
+}
+
+.reveal-in {
+  animation: fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: var(--delay, 0ms);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .pulse-dot {
+  .pulse-dot,
+  .fade-up,
+  .float,
+  .glow-pulse,
+  .caret-blink,
+  .reveal-in {
     animation: none;
+  }
+  /* Anything that starts hidden has to end visible with no animation to run. */
+  .fade-up,
+  .reveal,
+  .reveal-in {
+    opacity: 1;
+    transform: none;
+  }
+  .caret-blink {
+    opacity: 1;
   }
 }
