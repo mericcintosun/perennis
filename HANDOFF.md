@@ -1339,3 +1339,369 @@ Nothing vanished silently.
 Nothing was declined. No panel item this round asked for a new feature, so the
 wording "jüri önerisi, kapsam dışı: yeni özellik" was not needed and is not used
 above.
+
+---
+
+## 11. Phase 5 record, the security pass
+
+A note on the numbering. Section 10 above is also called Phase 5, because it was
+a jury fix round run under that label. This section is the build phase called
+Phase 5: the security pass, contract audit and wallet trust. Two different
+sessions, same number, and renumbering either would make the other's cross
+references wrong.
+
+### Goal
+
+No new demo step. Protect the ones that exist, and make `DEMO.md` step 1 (the
+single signature: approve, deposit, `startPlan`) safe to perform on camera in
+front of a judge with a real wallet. A judge who connects MetaMask to the live
+URL should see no popup on page load, one readable sentence before every
+signature, an exact bounded approval amount, and contract addresses they can
+click through to the explorer.
+
+### Status
+
+Written, not executed. Nothing in this session was run: no `npm install`, no
+`npm run build`, no `npm run seed`, no `forge build`, no `forge test`, no RPC
+call, no transaction, no wallet dialog, no browser. There was no shell. Every
+command dependent claim below is unverified and is the runner's to check.
+
+**The contract changed, so it must be redeployed.** The address
+`0x99cef3f8f394b5414acea7facfe5fa20a4ec8961` in
+`contracts/broadcast/Deploy.s.sol/50312/run-latest.json` is stale from this
+commit onward. `EVIDENCE.md` rows 1 and 2 must be regenerated.
+
+**Still mocked, unchanged by this phase:** `resolveWindow()`,
+`settleAndRoll()` and `syntheticTxHash()` in `lib/vault.ts`, `toBytes32()` in
+`lib/markets.ts` and `lib/tx.ts`, `DEMO_WINDOW_SECONDS = 20`, and the SDK
+response shape in `types/somnia-markets-sdk.d.ts`.
+
+### The findings ledger
+
+Every candidate this phase was handed, plus what came out of reading the file.
+Nothing was dropped silently and nothing was invented to fill the budget.
+
+**Fixed, contract:**
+
+1. **A, unchecked approve returns.** Confirmed at the old
+   `contracts/src/PerennisVault.sol` lines 378, 385 and 391: three bare
+   `collateral.approve(...)` calls, all three dropping the boolean. **Severity:
+   medium.** Fixed with `_approveExact` and `_clearApproval`, which `require`
+   the return.
+2. **B, unspent stake stranded.** Confirmed. `try markets.buy(next, direction,
+   stake)` ignored the return and `balance -= stake` was unconditional, so a
+   module spending less than `maxCost` left the difference as surplus the vault
+   did not count. **Severity: medium**, because it compounds once per window.
+   Fixed by measuring `collateral.balanceOf(address(this))` around the call and
+   crediting `stake - spent` back.
+3. **C, redeem proceeds trusted.** Confirmed: `uint256 payout =
+   markets.redeem(marketId); balance += payout;`. `deposit` already credited a
+   measured delta and this path did not. **Severity: high**, because an inflated
+   balance makes the stop rules fire against money that is not there. Fixed by
+   measuring the delta. `RollSettled` keeps its five arguments.
+4. **D, `startPlan` over an open position.** Confirmed: `onlyOwner` with no
+   `status` guard, and the body resets `_queue` and calls `_enterNext`, which
+   overwrites `openMarketId`. `_onEvent` only settles the id it is holding, so
+   the previous window's outcome tokens had no path back to collateral.
+   **Severity: high.** Fixed with `if (status == Status.Active) revert
+   PlanActive();` as the first line.
+
+**Fixed, escape hatch:**
+
+5. **No recovery path.** `ISomniaReactivity.unsubscribe` was declared and never
+   called, so `halt()` left a subscription billing the owner forever, and stray
+   collateral or native STT had no way out. **Severity: medium.** Fixed with
+   `rescue()` and `stopSubscription()`, both `onlyOwner`. `rescue()` can only
+   move `collateral.balanceOf(address(this)) - balance`, so an open position
+   stays funded.
+6. **`armNext` accepted `bytes32(0)`.** That is the id `_enterNext` uses to mean
+   "queue empty", so a zero pushed into the queue read back as a market that
+   never existed. **Severity: low.** Fixed with `ZeroWindowId()`.
+
+**Found, not fixed, parked here with the shortest fix path:**
+
+7. **`armNext` is permissionless, so a stranger picks the vault's next markets.**
+   This is a deliberate product decision, not an oversight, and it is written up
+   in `SECURITY.md` under "The one open trust boundary". **Severity: medium on
+   testnet, high for anything holding real money.** Bounded by
+   `plan.stakePerWindow`, the `marketState == 1` gate in `_enterNext`, the stop
+   rules, and the `MAX_QUEUE_ADD` / `MAX_PENDING` caps. Not bounded: which
+   markets. **Shortest fix:** an owner allowlist on queued ids, or make
+   `armNext` owner only and add a separate refill that accepts only ids the
+   owner pre-committed. Both change the "anyone can refill a dry queue" story
+   the demo tells, so it is a product call rather than an edit.
+8. **A checked approve makes `_enterNext` revert on a token that answers false,
+   and from `_onEvent` that reverts the whole handler run.** The trade is
+   deliberate and documented in the contract: entering a window on an allowance
+   that does not exist is worse. **Severity: low**, because tUSDC reverts rather
+   than returning false, and the owner can always `halt()` then `withdraw()`.
+   **Shortest fix if it ever bites:** move the two `_clearApproval()` calls (the
+   cleanup ones, not the setter) into a low level `call` whose failure is
+   emitted rather than required.
+9. **The voided market gap from Phase 2 is still open.** `RollSettled` carries
+   `bool won`, so a voided window reads as a loss. **Severity: low**, cosmetic
+   on the ledger. **Shortest fix:** a `uint8 outcome` on the event, which needs
+   a fence lift and a matching edit to `lib/vault.ts`.
+10. **`_queue` is private with no getter**, so the console cannot show queued
+    ids on the chain path (Phase 4 open question 4). **Severity: informational.**
+    **Shortest fix:** a `queueAt(uint256)` view.
+
+**Checked, not a finding:**
+
+- **No unbounded approval anywhere.** Grep for `maxUint256`,
+  `type(uint256).max` and `ffffffff` across the repo: the only matches are
+  `lib/vault.ts:197` and `:200`, `Math.floor(hashSeed(...) * 0xffffffff)`, a 32
+  bit mask in the deterministic draw. Nothing on any approval path.
+- **`eth_sign` and `personal_sign` appear nowhere in the repository.** Zero
+  matches.
+- **`eth_requestAccounts` appears once**, at `lib/tx.ts:261` inside
+  `connectWallet()` (plus one mention in a comment at `lib/wallet-state.ts:27`).
+  `connectWallet` is called only from `handleConnect()` in
+  `components/standing-plan-console.tsx`, which is wired to the Connect
+  button's `onClick`. It is in no `useEffect`. No wallet dialog can open on page
+  load.
+- **`handleConnect` sets state and does nothing else.** The approve is built in
+  `depositCalls()` and only sent from `writePlan()`, behind its own click.
+  Connect is never followed automatically by an approval.
+- **No `http://` URL in `app/`, `components/` or `lib/`** that is fetched. One
+  match exists, `app/icon.svg:1`, and it is the SVG XML namespace
+  `xmlns="http://www.w3.org/2000/svg"`, which is an identifier and is never
+  requested. `app/icon.svg` is on the never touch list and was not touched.
+- **No key-like string reachable from the client.** `PRIVATE_KEY` matches only
+  the `$FARM_EVM_PRIVATE_KEY` shell placeholders in `scripts/demo-reset.mjs` and
+  `contracts/README.md`, which are command line documentation and hold no value.
+  No `sk-` match anywhere.
+- **`contracts/broadcast/` holds no key.** Its JSON keys are `transactions`,
+  `hash`, `transactionType`, `contractName`, `contractAddress`, `function`,
+  `arguments`, `transaction` (`from`, `to`, `gas`, `value`, `input`, `nonce`,
+  `chainId`), `additionalContracts`, `isFixedGasLimit`, `receipts`, `libraries`,
+  `pending`, `returns`, `timestamp`, `chain`, `commit`. No private key field, no
+  mnemonic. It stays tracked as deploy evidence.
+- **The plan builder posts nowhere.** Every field in
+  `components/standing-plan-console.tsx` is local `useState` validated by
+  `parsePlanForm()`. The only network calls are this repo's `/api/*` routes and
+  the Shannon RPC. No analytics endpoint, no third party form handler, no
+  outbound POST.
+
+### The MetaMask and Blockaid warning, honestly
+
+**Expect it to persist on the live URL, and plan the video around it.** The red
+"this site is not verified" style warning MetaMask and Blockaid show on a fresh
+domain is partly reputation based: it keys on domain age, traffic and prior
+reports, not on what the page does. **No code change in this repo removes it.**
+Everything in this phase (no auto connect, bounded approvals, a plain language
+preview, `SECURITY.md`) makes the warning less likely and makes the flow
+defensible when a judge reads it, but none of it buys reputation for a
+`*.vercel.app` subdomain that went up this week.
+
+Consequence for Phase 9: **the video must show the whole wallet flow on screen**,
+including the connect dialog and the approval popup with its exact amount, so a
+judge can score the demo without connecting cold themselves. If a judge does
+connect and sees the warning, the README and `SECURITY.md` are what answer it.
+
+### Decisions
+
+- **`_enterNext` and `_settleAndRoll` became `internal`.** A successful
+  `startPlan` calls the reactivity precompile at `0x0100`, which has no code
+  inside forge, so a high level call to it reverts and no cheatcode-free test
+  could ever drive the vault into an Active plan through the front door. The
+  answer is `VaultHarness` in the test file: a subclass that adds four test only
+  entry points and overrides nothing. Neither function is in the ABI and
+  `_onEvent` is still the only path to them on chain. The alternative was a bare
+  `Vm` cheatcode interface plus `vm.etch`, which the house style forbids.
+- **`PositionOpened` now carries the measured `spent`, not the requested
+  `stake`.** Same event, same three parameters, same order. The number is the
+  collateral that actually left the vault, which is the honest one.
+- **The preview says tUSDC, the rest of the screen says USDso.** Deliberate.
+  The wallet popup will say tUSDC, and a preview that does not match the popup
+  is worse than no preview. The reason is written into the component's comment.
+- **The preview is branch aware.** It lists the calls the controls actually
+  visible on that card will send: approve, deposit and plan on an idle vault;
+  arm and halt on an active one; arm and withdraw on a stopped one. A fixed
+  three line list would be a lie two thirds of the time.
+- **The preview is rendered once, at the top of the plan card's
+  `CardContent`**, so it precedes every write control in source order on every
+  branch rather than being duplicated into each one.
+- **`parsePlanForm(form)` is parsed once into `parsedPlan` and read twice**, by
+  the error list and by `writePlan()`. The preview reads the same `form` values
+  the encoder scales, so the sentence and the calldata cannot drift.
+- **No new dependency, no new route, no new env variable, no new `lib/`
+  module.** Every ask-first item stayed unasked because none came up.
+- **`contracts/broadcast/` stays tracked**, `contracts/cache/` and
+  `contracts/out/` were added to `.gitignore`. The broadcast folder is the only
+  on chain evidence currently in the repo and it holds no key.
+
+### Failed attempts and deviations
+
+- **Nothing was run, so no error could survive two correction attempts.** This
+  session had no shell, no network and no browser.
+- **The five existing tests are byte identical in their bodies**, but the type
+  of the `vault` field changed from `PerennisVault` to `VaultHarness`, and
+  `setUp()` gained one line (`markets.setToken(token)`). `VaultHarness` is a
+  `PerennisVault`, so `NonOwnerCaller.callWithdraw(PerennisVault, uint256)` takes
+  it unchanged. No assertion and no message string was altered.
+- **`MockERC20` and `MockMarkets` were extended, not duplicated**, exactly as
+  the phase asked. `MockERC20` gained `mint` and an `approveReturnsFalse` flag,
+  `MockMarkets` gained a token reference, `spendBps` and the redeem pair. Every
+  new knob defaults to the Phase 1 behaviour.
+- **The explorer link polish was kept, not cut.** The cut protocol lists it
+  second, but the budget held.
+- **Line numbers cited in the findings ledger above are pre-edit.** They point
+  at where each finding was read, not at where the fix now sits.
+- **`contracts/README.md` was left alone**, to stay under the fifteen file
+  ceiling this phase was given. Its test table still describes the original five
+  cases accurately, it is just missing the six added here, and it says nothing
+  about `contracts/script/Smoke.s.sol`. The root `README.md` covers both, so
+  nothing on the page is wrong, only incomplete. **Severity: informational.**
+  Shortest fix: six rows on that table and one section on the smoke script.
+
+### Acceptance gate, honestly
+
+Met, by reading the files:
+
+- Every state mutating external or public function in
+  `contracts/src/PerennisVault.sol` is accounted for. `withdraw` (`:216`),
+  `startPlan` (`:239`), `halt` (`:301`), `rescue` (`:316`) and
+  `stopSubscription` (`:336`) are `onlyOwner`. `_onEvent` (`:350`) checks
+  `msg.sender != address(REACTIVITY)`. `deposit` (`:206`), `armNext` (`:288`)
+  and `receive()` are open, and each now carries a comment saying why a stranger
+  may call it.
+- `noReentry` is on `deposit`, `withdraw` and `_onEvent`, unchanged.
+- Every token return value is checked. A grep for
+  `collateral.(approve|transfer|transferFrom)` returns five call sites, at
+  `:208`, `:219`, `:319`, `:446` and `:450`, and all five are inside a
+  `require`. No bare `collateral.approve(` survives.
+- `deposit` credits a measured delta (`:207` to `:210`), `_settleAndRoll`
+  credits a measured redeem delta (`:382` to `:387`), `_enterNext` credits back
+  the unspent stake (`:487` to `:499`). No stranger reachable function takes a
+  caller supplied `from` on a `transferFrom`: the only `transferFrom` pulls from
+  `msg.sender`.
+- Every `event` declaration at `:138` to `:152` is byte for byte what it was.
+  `PositionOpened` carries a different value, not a different shape.
+- `contracts/test/PerennisVault.t.sol` has the five Phase 1 cases with their
+  bodies unchanged plus six named after the findings:
+  `test_ApproveFailureDoesNotOpenAPosition`, `test_UnspentStakeIsCreditedBack`,
+  `test_RedeemCreditsMeasuredDelta`, `test_StartPlanRejectsAnActivePlan`,
+  `test_RescueLeavesTrackedBalanceAlone`, `test_ArmNextRejectsZeroId`. No
+  forge-std, no cheatcode, `require` assertions, every mock declared in the same
+  file, the one relative import kept.
+- `contracts/script/Smoke.s.sol` exists, reads `DEPLOYED_CONTRACT` and
+  `COLLATERAL_TOKEN` through `vm.envAddress`, reads `decimals()` off the token
+  rather than hardcoding a scale, and contains no `startPlan`, `withdraw`,
+  `halt` or `rescue` call.
+- The greps in the findings ledger above are the evidence for the connect
+  hygiene, the bounded approvals, the `http://` sweep and the secret sweep.
+- The preview block and the address strip are at
+  `components/standing-plan-console.tsx:1053` and `:1143`, rendered at `:447`
+  at the top of the plan card's `CardContent`, which is before every write
+  control on that card in source order.
+- The footer About and Security section is in `components/site-footer.tsx`, in
+  the shared shell through `app/layout.tsx`, so it renders on `/` and
+  `/console`. It carries the chain id, both address slots, the `SECURITY.md`
+  link and the repo link.
+- A grep for `rel="noreferrer"` without `noopener` across `app/` and
+  `components/` returns nothing. `.gitignore` carries `contracts/cache/` and
+  `contracts/out/`.
+- `SECURITY.md` exists with exactly four sections. Its two literal addresses are
+  the tUSDC token, byte identical to the `.env.example` line for
+  `NEXT_PUBLIC_COLLATERAL_TOKEN`, and the reactivity precompile, byte identical
+  to `REACTIVITY_PRECOMPILE` in `lib/config.ts`. The vault address is not
+  written out anywhere in it: it points at `EVIDENCE.md` row 1.
+- No new route, no new dependency, no new feature module. Fourteen files
+  touched.
+- `fixtures/*.json` are untouched, `lib/adapters/fake.ts` is untouched, so
+  `/console` still renders on an empty `.env.local`.
+- `.farm-commits.json` has six entries in the four required message forms.
+
+Not met, or not checkable from here:
+
+- **Nothing was compiled or run.** `npm run build`, `forge build` and
+  `forge test` are all unverified. In particular `VaultHarness` and the two
+  visibility changes are the highest risk items in the diff: if `forge build`
+  fails anywhere, it will be there.
+- **Two em dashes survive in `components/standing-plan-console.tsx`**, at `:684`
+  and `:1332`. Both are the "no value yet" glyph in a stat and in the countdown
+  ring, not punctuation in a sentence, and both predate this phase. They were
+  left alone rather than changed during a security pass, because the countdown
+  glyph is on camera in the recorded demo. **Severity: informational.**
+- **Every claim about how anything renders at 360px is read, not seen.** No
+  browser was opened.
+- **The wallet behaviours are unverified.** No wallet dialog was opened, so
+  "no popup on page load" is a reading of the call graph and not an observation.
+
+### Files changed
+
+Added: `SECURITY.md`, `contracts/script/Smoke.s.sol`.
+
+Changed: `contracts/src/PerennisVault.sol`, `contracts/test/PerennisVault.t.sol`,
+`contracts/foundry.toml`, `components/standing-plan-console.tsx`,
+`components/site-footer.tsx`, `components/wallet-panel.tsx`, `.gitignore`,
+`CLAUDE.md`, `EVIDENCE.md`, `README.md`, `HANDOFF.md`, `.farm-commits.json`.
+
+Deleted: nothing. Nothing under `public/`, `app/icon.svg`,
+`app/opengraph-image.png`, `contracts/script/Deploy.s.sol` or `fixtures/` was
+touched. There are still two page routes and four API routes, no new dependency
+and no new feature module.
+
+### Commands run
+
+None, this agent cannot run commands. Not `npm install`, not `npm run build`,
+not `npm run seed`, not `forge build`, not `forge test`, not a single RPC call.
+
+What the runner should run, in order:
+
+```bash
+npm install            # dependencies are unchanged, this should be a no-op
+npm run build          # must pass with zero TypeScript errors
+npm run seed           # twice, fixtures/seed-manifest.json must be identical
+npm run test:contracts # cd contracts && forge test, eleven cases now
+```
+
+Then, and this one is not optional:
+
+1. **Redeploy the vault.** The contract changed.
+   `forge script script/Deploy.s.sol --rpc-url $RPC_URL --private-key
+   $FARM_EVM_PRIVATE_KEY --broadcast`. Put the new address into `.env.local` as
+   `NEXT_PUBLIC_CONTRACT_ADDRESS` and into `EVIDENCE.md` rows 1 and 2.
+2. **Check the wallet is funded first.** STT on chain 50312 for gas plus the
+   `0.05` STT subscription funding, and tUSDC for the smoke deposit. Faucets:
+   `https://cloud.google.com/application/web3/faucet/somnia/shannon`,
+   `https://stakely.io/faucet/somnia-testnet-stt`, or the Somnia Discord
+   `#dev-chat` route in the developer FAQ.
+3. **`forge script script/Smoke.s.sol`** with `DEPLOYED_CONTRACT` and
+   `COLLATERAL_TOKEN` exported. Its faucet, approve and deposit hashes go into
+   `EVIDENCE.md` row 9 and into `README.md`.
+4. **Vercel redeploy, then the live URL in a fresh browser profile with
+   MetaMask.** Four things to watch: the page loads with no wallet popup,
+   connect happens only after the click, the chain switch prompt targets 50312,
+   and the approval popup shows the same bounded amount the console displayed.
+5. **Check https and no mixed content warnings** in the browser console.
+6. **If the MetaMask or Blockaid red warning appears**, record it here so the
+   Phase 9 video covers the full wallet flow on screen. Expect it to appear.
+
+### Open questions for the human
+
+1. **Is the permissionless `armNext` still the right call?** It is the one open
+   trust boundary and it is written up with a severity in `SECURITY.md`. Keeping
+   it is the recommendation for a testnet demo, because it is half the "anyone
+   can refill a dry queue" story. Say if you want it owner gated before the
+   recording.
+2. **`PositionOpened` now emits the measured spend rather than the requested
+   stake.** Nothing in `lib/` decodes that third argument today, so this is
+   free, but confirm no off repo tooling reads it as the stake.
+3. **`rescue()` sends the whole native balance to the owner.** That includes STT
+   sitting in the vault to top up the subscription. Call `stopSubscription()`
+   first if you actually want to close things down, or the subscription is left
+   funded by nothing.
+4. **The preview says tUSDC and the rest of the console says USDso.** Confirm
+   that reads correctly to you before the recording, or pick one word for both.
+
+### Next best step for Phase 6
+
+The two artefacts that are not code and that no shell-less session can produce:
+deploy the redeployed vault and fill `EVIDENCE.md`, then record `VIDEO.md`
+against a real window boundary with the whole wallet flow on screen. After that,
+the health strip against live values (section 3F) is the last engineering item
+on the demo path, and the SDK documentation feedback report is free points that
+should be written straight out of the Phase 4 open questions while the friction
+is still fresh.

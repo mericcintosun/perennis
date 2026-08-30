@@ -26,8 +26,17 @@ Explorer base: `https://shannon-explorer.somnia.network` (chain 50312). It is
 | 6 | tUSDC collateral address | `0x70a86D8842FB63C4Ad2b7cdddF530eBf1BB25d8E` | `https://shannon-explorer.somnia.network/address/0x70a86D8842FB63C4Ad2b7cdddF530eBf1BB25d8E` | Already known. It is `COLLATERAL_TOKEN` in `contracts/README.md` and the value `.env.example` ships for `NEXT_PUBLIC_COLLATERAL_TOKEN`. Get balance with `cast send $COLLATERAL_TOKEN "faucet(uint256)" 10000000000`. |
 | 7 | DreamDEX BinaryMarketsModule address | `NOT YET FILLED` | `https://shannon-explorer.somnia.network/address/<address>` | From the sponsor's own contracts and addresses page. It goes into `.env.local` as `NEXT_PUBLIC_BINARY_MARKETS_MODULE` and into the deploy script's `BINARY_MARKETS_MODULE`. |
 | 8 | Reactivity subscription id | `NOT YET FILLED` | not an address, read it off the `SubscriptionOpened` event on row 3's receipt | Returned by the precompile at `0x0000000000000000000000000000000000000100` inside `startPlan`. `HANDOFF.md` section 3A calls this the single highest risk item in the project. |
+| 9 | Smoke script deposit transaction | `NOT YET FILLED` | `https://shannon-explorer.somnia.network/tx/<hash>` | `forge script script/Smoke.s.sol --rpc-url $RPC_URL --private-key $FARM_EVM_PRIVATE_KEY --broadcast`, with `DEPLOYED_CONTRACT` and `COLLATERAL_TOKEN` exported. One broadcast: the tUSDC faucet, an approve for exactly that amount, then `deposit`. It never writes a plan and never withdraws, so it is safe to run before the recording. `run()` returns the vault balance and forge prints it. |
 
-Rows 1 to 5 are the ones a judge will actually click. Rows 6 to 8 are what makes
+**The contract changed in Phase 5.** The security pass edited
+`contracts/src/PerennisVault.sol` (checked approvals, measured redeem and buy
+deltas, a guard on `startPlan`, `rescue()` and `stopSubscription()`), so rows 1
+and 2 must be regenerated from a fresh deploy. Any address under
+`contracts/broadcast/` predates that edit and is stale. This table is the single
+source for the live vault address, and `SECURITY.md` points at row 1 rather than
+carrying its own copy.
+
+Rows 1 to 5 are the ones a judge will actually click. Rows 6 to 9 are what makes
 rows 1 to 5 reproducible.
 
 ---

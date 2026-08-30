@@ -15,6 +15,7 @@ submission goes on the form, and until then they say so.
 | Live app | The intended production target. https://perennis-app.vercel.app. It goes on the DoraHacks form only after it loads `/console` in a private window. | https://perennis-app.vercel.app |
 | Demo video | Not recorded. The 90 second shot list is written, second banded and rehearsable. | [VIDEO.md](VIDEO.md) |
 | On chain proof | Not deployed. One row per artefact, every slot empty and labelled, with the recipe to produce it. | [EVIDENCE.md](EVIDENCE.md) |
+| Security | Contract addresses, every wallet permission this app requests, and the bounded approval amounts. It never asks for `eth_sign` or `personal_sign`, and no wallet dialog opens on page load. | [SECURITY.md](SECURITY.md) |
 
 **The link is down? Run it locally in 30 seconds. No env vars needed.**
 
@@ -117,9 +118,14 @@ open window on the vault card and every id in the queue strip come through
   outcome tokens, tUSDC collateral
 - Deploys to Vercel, no server processes and no runtime filesystem writes
 
-The contract's five tests are in `contracts/test/PerennisVault.t.sol`, and
-[contracts/README.md](contracts/README.md) has a table saying what each one
-asserts rather than what its name suggests.
+The contract's tests are in `contracts/test/PerennisVault.t.sol`, and
+[contracts/README.md](contracts/README.md) has a table saying what the first
+five assert rather than what their names suggest. Phase 5 added six more, one
+per security finding it fixed: checked approve returns, unspent stake credited
+back, a measured redeem delta, `startPlan` refused over a live plan, `rescue()`
+leaving the tracked balance alone, and `armNext` refusing a zero market id.
+`contracts/script/Smoke.s.sol` does one safe real interaction with a deployed
+vault (faucet, approve, deposit) and never writes a plan.
 
 ## What the console shows
 

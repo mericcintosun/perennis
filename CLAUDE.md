@@ -93,6 +93,49 @@ later phase does not read the diff and assume the fence is open:
 unchanged, so `lib/vault.ts` is still a valid mirror. The fence is closed again:
 anything beyond those four is off limits.
 
+### Fence lift, Phase 5 only, now spent
+
+Phase 5 was a security pass and was granted a second scoped exception to the
+same rule, for security fixes only. Applied, and recorded here so a later phase
+does not read the diff and assume the fence is open:
+
+1. **checked approvals:** `_approveExact` and `_clearApproval`, two private
+   helpers that `require` the returned boolean. All three bare
+   `collateral.approve(...)` call sites in `_enterNext` now go through them.
+2. **unspent stake credited back:** `_enterNext` measures
+   `collateral.balanceOf(address(this))` around the `try markets.buy(...)` and
+   returns `stake - spent` to `balance`. `PositionOpened` carries the measured
+   `spent` instead of the requested `stake`, same three parameters.
+3. **measured redeem delta:** `_settleAndRoll` measures the collateral balance
+   around `markets.redeem(marketId)` and credits the delta instead of the
+   number the module returned. `RollSettled` still carries its five arguments,
+   now with the measured payout.
+4. **`startPlan` guard:** reverts `PlanActive()` when `status == Status.Active`,
+   so a second plan cannot overwrite `openMarketId` and strand a live window.
+5. **`armNext` zero id guard:** reverts `ZeroWindowId()`, plus a comment naming
+   the trust boundary that stays open. Same external signature.
+6. **two new owner gated functions:** `rescue()` (untracked collateral surplus
+   plus the native balance to the owner, never collateral `balance` accounts
+   for) and `stopSubscription()` (the first call site for
+   `ISomniaReactivity.unsubscribe`, which nothing called before).
+7. **two new errors:** `PlanActive()` and `ZeroWindowId()`.
+8. **`_enterNext` and `_settleAndRoll` are `internal`, not `private`.** A
+   successful `startPlan` calls the reactivity precompile at `0x0100`, which has
+   no code inside forge, so the settlement path was unreachable from a test
+   without a cheatcode. `VaultHarness` in `contracts/test/PerennisVault.t.sol`
+   subclasses the vault to reach them. Neither function is in the ABI and
+   `_onEvent` is still the only path to them on chain.
+
+Unchanged, and still fenced: `_evaluateStops` and the stop rule semantics, every
+`event` declaration byte for byte, the `Plan`, `Roll`, `Status` and `StopReason`
+shapes, the `startPlan` and `armNext` external signatures, and
+`contracts/script/Deploy.s.sol`. `lib/vault.ts` is still a valid mirror. The
+fence is closed again: anything beyond the eight items above is off limits.
+
+**The contract changed, so the deployed address changed.** Anything under
+`contracts/broadcast/` is stale from this commit onward. `EVIDENCE.md` row 1 is
+the single source for the live vault address.
+
 ## Vercel guardrails
 
 - No runtime filesystem writes in app code. `scripts/seed.mjs` and

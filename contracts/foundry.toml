@@ -1,4 +1,9 @@
 [profile.default]
+# Somnia Shannon prices code storage at roughly 3.1k gas per byte (the standard
+# is 200). runs=1 keeps the runtime size down so the deploy gas fits the balance.
+optimizer = true
+optimizer_runs = 1
+evm_version = "paris" # Somnia Shannon may not support PUSH0 (Shanghai). Paris never emits one.
 src = "src"
 out = "out"
 libs = ["lib"]
