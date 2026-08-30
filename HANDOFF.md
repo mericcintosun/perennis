@@ -2295,7 +2295,10 @@ because they are new files:
   each file that used to quote the string in full no longer does, so the grep
   now hits nothing but the four real fields: four hits means nothing was filled
   in, zero means both files are done, and anything between means a field was
-  missed.
+  missed. **Phase 7 corrected this count again, on 30 August 2026.** The two live
+  app fields were filled with `https://perennis-app.vercel.app`, so the grep now
+  has two real fields left, both about the demo video: two hits means the video
+  is still missing, zero means both files are done. Section 15 has the record.
 
 ---
 
@@ -2684,8 +2687,9 @@ canonical list; this is the Phase 9 ordering of it with the deadline attached.
 7. **Record `VIDEO.md`** against a real 15 minute window boundary, with the
    whole wallet flow on screen, 2 to 3 minutes, one unbroken take for the
    console band.
-8. **Replace both `PENDING` strings.** Two in `README.md`, two in
-   `SUBMISSION.md`, all four in the same sitting. Grep for
+8. **Replace the remaining `PENDING` strings.** Two are left after Phase 7, one
+   in `README.md` and one in `SUBMISSION.md`, both the demo video field, and they
+   go in the same sitting. Grep for
    `PENDING, filled by a human before submitting`: zero hits means done.
 9. **Make the repository public**, after a full history secret scan comes back
    clean.
@@ -2857,3 +2861,210 @@ Deleted: nothing. No token, font, radius, keyframe or layout decision in
 touched, so the Phase 5 wallet decisions are untouched by construction: no new
 prompt, no loosened approval, no auto-connect, and `eth_requestAccounts` still
 appears exactly once, in `connectWallet()`.
+
+---
+
+# 15. Phase 7 record, the round 2 jury fixes and the freeze
+
+**The code is frozen after this phase.** No route, component, `lib/` module,
+fixture or contract changes again. A finding that arrives after this point goes
+in this file, and where honesty requires it, as a dated known gap line under
+"What this submission does not claim" in `SUBMISSION.md`. There is no round 3.
+
+## Goal
+
+A second three juror panel scored the submission 4.3, verdict `fix-then-submit`,
+confidence low, with all three jurors marking `wouldAdvance: false`. The panel
+said plainly that the low confidence was not disagreement:
+
+> "Puanlar hemfikir (spread 1, 0, 0) ama güveni düşüren şey uzlaşma değil kanıtın
+> yokluğu: üç jüri de aynı iki maddeyi doğrulayamadı, 'On chain proof | Not
+> deployed' (README) ve 'Deploy edilmiş bir demo linki yok.' (LIVE_DEMO).
+> Payload'da canlı site, site haritası, video ve deck yok, yani 4.3 ürünün
+> kalitesini değil, jürinin görebildiği yüzeyin boşluğunu ölçüyor."
+
+And the sentence that set the scope:
+
+> "tıklanabilir bir /console linki ve explorer'da açılan tek bir RollSettled tx,
+> bu paneldeki her kriteri aynı anda yukarı çeken iki şey."
+
+One of those two is now in the repository. The other needs a chain.
+
+No `DEMO.md` step was added and no step changed. Steps 1 to 9 are byte identical
+and each still names a file that exists. What moved is the half of the walk that
+happens before a judge reaches the browser: the links they follow.
+
+## Status
+
+Written, not executed. Nothing in this session was run: no `npm install`, no
+`npm run build`, no `npm run seed`, no `forge test`, no RPC call, no
+transaction, no wallet dialog, no dev server, no browser. Every claim below was
+established by reading and grepping files.
+
+Two of the three repeated blockers are still open and both are the human's: the
+recording and the deploy. The live link is the one that closed, and it closed
+because the deployment happened outside this session, not because anything here
+verified it.
+
+## Decisions
+
+- **The live URL is stated as a dated observation, not as a result of this
+  session.** The asset record carries `Canlı demo (Vercel)`,
+  `https://perennis-app.vercel.app`, added 30 August 2026, and the compliance
+  probe of the same date recorded check `deploy`, "Deploy şu an ayakta", status
+  pass, detail "200 · 298 ms". Every place that fact now appears (`README.md`
+  Demo table, `SUBMISSION.md` "Live demo link", `DELIVERY.md` item 1) says the
+  date and keeps the private window check as the paste gate. A probe is a reading
+  of one moment and a link can be down when a judge clicks it.
+- **The deep link is in the first table a judge reads.** The panel asked for a
+  clickable `/console`, so the `Live app` row links both the root and
+  `https://perennis-app.vercel.app/console`, and `SUBMISSION.md` names the same
+  deep link under the live demo block.
+- **One claim per column in the Demo table.** The middle column says only whether
+  the thing exists today, the right column names only the artefact. That is the
+  direct fix for the `artifact-ambiguous` finding, where one cell said the video
+  was both absent and present.
+- **The video placeholder stays.** No take has been recorded, so
+  `PENDING, filled by a human before submitting` is still the truthful content of
+  that field. Two hits remain, `README.md:16` and `SUBMISSION.md:78`, both about
+  the video, and the arithmetic sentences in `README.md`, `SUBMISSION.md` and
+  this file's Phase 9 sections were corrected from four to two rather than left
+  as a grep instruction that lies.
+- **The on chain gap is dated rather than softened.** `SUBMISSION.md` gained two
+  known gap lines under "What this submission does not claim", naming the eight
+  `EVIDENCE.md` rows that read `NOT YET FILLED` as of 30 August 2026 and saying
+  `VIDEO.md` is a script. No `EVIDENCE.md` row was filled and no hash, address,
+  video URL or screenshot path was invented anywhere.
+- **The bot kit finding was rebutted, not fixed.** The string the panel scored is
+  not in this repository. Three files already correct it, cited in table A below.
+  The fix belongs on the DoraHacks form text, which is not a tracked file.
+- **No new dependency, env variable, route, schema or fixture change.** The
+  ask-first list never came up, so the safe default held on all of it.
+- **The freeze hygiene sweep changed no file, because nothing was wrong.** It was
+  done by reading, and it is a verification rather than a commit, so it has no
+  entry in `.farm-commits.json`. What was checked: `.gitignore` carries `.env*`
+  at line 4 and `!.env.example` at line 5, in that order, and was not reordered.
+  Env parity holds at eleven distinct keys, ten read in `lib/config.ts`
+  (`NEXT_PUBLIC_CHAIN_ID`, `NEXT_PUBLIC_SOMNIA_RPC_URL`,
+  `NEXT_PUBLIC_SOMNIA_RPC_FALLBACK_URLS`, `NEXT_PUBLIC_EXPLORER_URL`,
+  `NEXT_PUBLIC_CONTRACT_ADDRESS`, `NEXT_PUBLIC_BINARY_MARKETS_MODULE`,
+  `NEXT_PUBLIC_COLLATERAL_TOKEN`, `NEXT_PUBLIC_MARKET_DISCOVERY`,
+  `NEXT_PUBLIC_SUBSCRIPTION_FUNDING_STT`, `NEXT_PUBLIC_TX_CONFIRMATIONS`) and one
+  in `lib/adapters/index.ts` (`ADAPTER_MODE`), and every one of the eleven has a
+  matching `KEY=` line in `.env.example`. `contracts/script/Smoke.s.sol:68` still
+  reads `vm.envAddress("DEPLOYED_CONTRACT")` and was not edited. `git ls-files`
+  is the runner's check, not this session's: whether a secret is tracked in
+  history cannot be read from the working tree.
+
+## Failed attempts
+
+None. No edit needed a second correction pass, and nothing was run, so no error
+could survive two attempts. The two findings that could not be closed were not
+failures of an edit: they need a deploy and a screen recorder.
+
+## Files changed
+
+Changed: `README.md`, `SUBMISSION.md`, `DELIVERY.md`, `HANDOFF.md`.
+
+Added: `.farm-commits.json` (the runner's commit plan, never committed itself).
+
+Deleted: nothing. Nothing under `app/`, `components/`, `lib/`, `fixtures/`,
+`contracts/` or `public/` was created, edited or deleted, so the Phase 5 wallet
+decisions hold by construction: `eth_requestAccounts` is still at exactly one
+call site in `connectWallet()`, there is no `eth_sign` and no `personal_sign`,
+and no approval is unbounded. `IDENTITY.md` was read and not amended, because
+this phase touched no visual file. `.env.example` was read and needed no change.
+
+## Commands run
+
+**None, this session had no shell.** Not `npm install`, not `npm run build`, not
+`npm run seed`, not `npm run demo:reset`, not `npm run test:contracts`, not
+`forge build`, not a single RPC call, not a browser at any width. Nothing in this
+section is a result.
+
+What the runner runs, in order:
+
+```bash
+npm install
+npm run build          # zero TypeScript errors
+npm run seed           # twice, fixtures/seed-manifest.json byte identical
+npm run test:contracts
+git ls-files | grep -i env   # only .env.example may appear
+git rm components/console-preview.tsx components/loop-stepper.tsx \
+       components/reveal.tsx components/copy-chip.tsx
+```
+
+The four files in that last command are Phase 8 tombstones, imported by nothing,
+and no shell-less session can delete them.
+
+## Table A, the round 2 findings
+
+Every finding in the panel payload, in the order the fix phase took them.
+Regression shaped first, repeats second, new last.
+
+| # | Finding, juror verbatim | Kind | Raised by | Verdict | Evidence |
+| --- | --- | --- | --- | --- | --- |
+| A1 | cause `artifact-ambiguous`: "VIDEO.md'nin var olup olmadığı payload'dan okunamıyor, karıştıran cümle README'deki 'Demo video \| Not recorded. The 90 second shot list is written' satırı, çünkü aynı hücrede hem yok hem var diyor." | REGRESSION, it came out of round 1 fix ledger item 1 | all three | **applied** | `README.md:16`. The status column now says only that no take has been recorded and that the form field is still the placeholder. The artefact column names `VIDEO.md` and calls it a script, not a recording. The sentence the panel quoted returns zero hits. |
+| A2 | "Canlı demo yok, README bunu kendisi kabul ediyor", evidence "Deploy edilmiş bir demo linki yok." (LIVE_DEMO) and "Live app \| The intended production target. Not confirmed answering." (README) | REPEAT, round 1 items 4 and 5 | all three | **applied** | `README.md:15` links `https://perennis-app.vercel.app` and the deep link `https://perennis-app.vercel.app/console`, with the dated probe (200 in 298 ms, 30 August 2026) named in the cell. `SUBMISSION.md` "Live demo link" carries the URL. `DELIVERY.md` item 1 keeps the private window gate and records the probe beside it. Whether the URL answers right now is could-not-verify from here: no network in this session. |
+| A3 | "Zincir üstü kanıt sıfır, bu da üretime yakın uygulama gereksinimini karşılamıyor", evidence "On chain proof \| Not deployed. One row per artefact, every slot empty and labelled" (README), against the rule "Deneyimli geliştiricilerden basit kavram kanıtı yerine üretime yakın bir uygulama bekleniyor" (RULES) | REPEAT, round 1 item 6 | all three | **could-not-verify**, stated as a dated known gap | Missing evidence, named: a deployed `PerennisVault` address and one `RollSettled` transaction produced by a validator. Neither exists and neither can be produced without a chain. What was written instead: a known gap line in `SUBMISSION.md` dating rows 1 to 5, 7, 8 and 9 of `EVIDENCE.md` as `NOT YET FILLED` on 30 August 2026, and a `README.md:17` recipe naming `contracts/script/Deploy.s.sol` and `contracts/script/Smoke.s.sol`. No row was filled and no hash was invented. |
+| A4 | "Payload'da canlı site, site haritası, video ve deck yok" (panel summary; the per juror sentences on the video were not in the payload handed to this phase, so this is the summary's own wording) | REPEAT, round 1 items 1, 2 and 3 | all three | **could-not-verify** | Missing evidence, named: a recorded take. `VIDEO.md` is the full shot list, second banded to a 2:20 cut with a fallback take that needs no chain, and it is labelled a script everywhere it is now referenced. A session with no shell, no browser and no screen recorder cannot produce a recording. The placeholder in both files is left standing on purpose. |
+| A5 | "Beyan edilen stack'te repoda karşılığı olmayan bir bileşen var", evidence "SUBMISSION'da 'dreamdex-bot-kit doctor.ts (salt okunur sağlık kontrolü)' geçiyor, FILES listesinde böyle bir dosya yok" | REPEAT, round 1 items 7 and 8 | sponsor-devrel | **rebutted** | The string is not a stack claim in this repository. `SUBMISSION.md:100` reads "Do not list a DreamDEX bot kit `doctor.ts`. It is not vendored in this repository". `DELIVERY.md:55` says the same in the health check table. `HANDOFF.md:213` says it a third time. The tech stack block at `SUBMISSION.md:97` does not contain the string. Every `doctor.ts` hit across `*.md` is a correction or a ledger note. The claim the panel scored lives in the DoraHacks form text, which is not a tracked file, so the fix is the human's at paste time. No code changed. |
+| A6 | Weakest link, criterion "Kullanıcı deneyimi", 231 points left on the table: "tarif ekran değil", evidence "Canlı site okunamadı, ürünün ekranların hakkında kanıt yok." (SITE_MAP) | NEW | all three | **could-not-verify, applied in part** | Applied in part: the live `/console` deep link is now in the payload's first table (`README.md:15`) and in `SUBMISSION.md`, so a juror has somewhere to click. Missing evidence, named: the recording and the `docs/step-1.png` through `docs/step-9.png` captures in `docs/SCREENSHOTS.md`. Prose about a screen is not a screen, which is the same reason round 1 item 10 was marked applied in part. |
+
+### Dropped up front, with the reason
+
+Neither of these is a round 3 item. They are decided, not deferred.
+
+- **The slide deck.** Optional on the submission package, and neither panel
+  ranked it in its top half. The hour it would cost is the hour the recording
+  needs, and the recording is a blocker on three criteria.
+- **A second pass on the landing page's repeated dispatch rhythm.**
+  `.farm-delta.md` "Kept", diagnosis 3, records it as half fixed by design: two
+  figures and a queue sentence break the repeat where it mattered, and the
+  numbered rhythm that remains is the archetype's own form. Replacing it a second
+  time would be taste, not a fix, and the code is frozen.
+
+## Table B, a verdict on every round 1 fix
+
+Section 10's fix ledger has eleven items. Each one was re-read against the file
+it claims to have changed. Nothing regressed.
+
+| Round 1 item | What it was | Verdict | File evidence |
+| --- | --- | --- | --- |
+| 1 | "Demo videosu yok, README'deki video alanı hâlâ yer tutucu." (sponsor-devrel), applied in `VIDEO.md` and `README.md` | **re-done** | The round 1 cell is what round 2 filed as `artifact-ambiguous`. Slice 1 rewrote it: `README.md:16` now splits status from artefact. `VIDEO.md` is unchanged. |
+| 2 | Video gate on the form field (technical), applied in `DELIVERY.md` | **held** | `DELIVERY.md` "Before submitting" item 2 still requires a recorded take of `VIDEO.md` that plays in a private window. Untouched this phase. |
+| 3 | "Demo videosu yok, oysa başvurunun kendi metni bunu zorunlu sayıyor." (product), could-not-verify | **held**, still could-not-verify | `VIDEO.md` exists with all four console bands plus the cold open, the fallback take and the late roll section. No take has been recorded, so the verdict is unchanged after two rounds. |
+| 4 | "Canlı demo cevap vermiyor..." (sponsor-devrel), applied in `README.md` as a hedge | **re-done** | The hedge is gone. `README.md:15` carries the URL, the `/console` deep link and the dated probe. The 60 second local path directly under the table (`npm install && npm run dev`, then `http://localhost:3000/console`) is untouched and still the fallback if the host is down. |
+| 5 | "Canlı demo yanıt vermiyor..." (product), applied in `DELIVERY.md` | **re-done** | `DELIVERY.md` item 1 keeps the private window gate and now records the 30 August 2026 probe beside it, so the gate is a check rather than a hope. |
+| 6 | Zero on chain evidence (sponsor-devrel), applied in `EVIDENCE.md` and the console header | **held** | `EVIDENCE.md` is unchanged: one row per artefact, explorer link shape, recipe, and `NOT YET FILLED` in every row that needs a chain. The console header explorer anchor in `components/standing-plan-console.tsx` is untouched. `README.md:17` now names the two scripts that produce the rows. The artefacts themselves are still could-not-verify, which is finding A3. |
+| 7 | The `doctor.ts` claim versus artefact (sponsor-devrel), applied in `DELIVERY.md` and `HANDOFF.md` | **held** | `DELIVERY.md:55` and `HANDOFF.md:213` both still say it is not vendored here. `SUBMISSION.md:100` says it a third time. Round 2 raised the same finding again from the form text, which is finding A5, rebutted. |
+| 8 | The same claim versus artefact, raised by a second juror (technical) | **held** | Same two files as item 7, unchanged. Recording it separately in round 1 was right: it is a form text problem, and it survived into round 2 for exactly that reason. |
+| 9 | "test dosyasının adı var, içinde ne olduğunu gösteren tek satır yok." (technical), applied in `contracts/README.md` | **held** | `contracts/README.md:35` still carries the "Test \| What it asserts" table, read off the `require` strings, with the note at line 43 about plain `require` and no `forge-std`. Nothing under `contracts/` was touched this phase. |
+| 10 | Weakest link, "Kullanıcı deneyimi", 231 points: "Bu kriter için elimde değerlendirilecek hiçbir şey yok." (all three), applied in part in `README.md` | **held**, still applied in part | `README.md:162`, "What the console shows", is unchanged. Round 2 raised the same criterion with new wording ("tarif ekran değil"), which is finding A6. The verdict does not move until there is a screen to look at. |
+| 11 | Fix rank 1, the first 30 seconds of the demo video (payload truncated mid sentence), applied in `VIDEO.md` | **held** | `VIDEO.md` still bands the console take at 0 to 15, 15 to 45, 45 to 75 and 75 to 90 seconds, with the silent open first. Untouched this phase. The truncated tail is still unfilled, which is the right call. |
+
+## Open questions for the human
+
+1. **Does `https://perennis-app.vercel.app` still answer, and does `/console`
+   render on it?** The probe is dated 30 August 2026 and was not run here. If the
+   answer is no, `README.md:15`, `SUBMISSION.md` "Live demo link" and
+   `DELIVERY.md` item 1 all move together, and the link comes off the form.
+2. **Does `/console` on the live URL still show a fallback notice?** If it does,
+   `LEDGER_CHUNK_BLOCKS` in `lib/config.ts` goes from `1000n` to `500n` and the
+   app redeploys. That is the one constant change section 14 sanctioned, and it
+   is the only code edit allowed after this freeze.
+3. **Is the DoraHacks form text going to be corrected?** The bot kit `doctor.ts`
+   line was scored by two panels and it is not in the repository. Nothing in a
+   tracked file can fix it. This is the fourth phase to ask.
+4. **`EVIDENCE.md` row 4.** One `RollSettled` produced by a validator, not by
+   `owner()`. It is the single artefact that turns three criteria at once, and
+   the verification recipe is already in that file's "how to verify this in 60
+   seconds" list.
+
+## Next best step
+
+The deploy, then the recording, in that order, off the manual submit checklist in
+section 13 and `DELIVERY.md` "Before submitting". Fund the owner wallet first,
+because a faucet wait in the middle of the run is what turns a two hour evening
+into a missed deadline. After the redeploy the code is frozen and only the
+DoraHacks form remains.
