@@ -10,6 +10,7 @@
 // Nothing here computes anything. The real screen is one click away and this is
 // only the picture of it, which is what the hero needs above the fold.
 
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -66,6 +67,9 @@ export function ConsolePreview() {
         </div>
         <p className="truncate font-mono text-xs text-muted-foreground">
           perennis / console
+          <span aria-hidden className="caret-blink ml-1 text-primary">
+            _
+          </span>
         </p>
       </div>
 
@@ -133,39 +137,58 @@ export function ConsolePreview() {
 
             <Separator />
 
-            <ol className="space-y-3">
+            {/* Both rows link into /console. A picture of a ledger that cannot
+                be clicked reads as a screenshot, and the real ledger is one
+                navigation away. Still a server component: next/link needs no
+                "use client" and there is no handler here. */}
+            <ol className="-mx-2 space-y-1">
               {rows.map((row) => (
-                <li key={row.title} className="flex gap-3">
-                  <span
-                    className={cn(
-                      "mt-1.5 size-3 shrink-0 rounded-full border-2 bg-card",
-                      row.outcome === "WON" ? "border-primary" : "border-warning"
-                    )}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-                      <p className="text-xs font-medium">{row.title}</p>
-                      <p
-                        className={cn(
-                          "tabular text-xs font-medium",
-                          row.outcome === "WON"
-                            ? "text-primary"
-                            : "text-warning"
-                        )}
-                      >
-                        {row.amount}
-                      </p>
+                <li key={row.title}>
+                  <Link
+                    href="/console"
+                    className="group flex gap-3 rounded-md px-2 py-2 transition-colors hover:bg-secondary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <span
+                      className={cn(
+                        "mt-1.5 size-3 shrink-0 rounded-full border-2 bg-card",
+                        row.outcome === "WON"
+                          ? "border-primary"
+                          : "border-warning"
+                      )}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+                        <p className="text-xs font-medium">
+                          {row.title}
+                          <span
+                            aria-hidden
+                            className="ml-1.5 inline-block text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary"
+                          >
+                            &rarr;
+                          </span>
+                        </p>
+                        <p
+                          className={cn(
+                            "tabular text-xs font-medium",
+                            row.outcome === "WON"
+                              ? "text-primary"
+                              : "text-warning"
+                          )}
+                        >
+                          {row.amount}
+                        </p>
+                      </div>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
+                        <span className="tabular">{row.meta}</span>
+                        <Badge
+                          variant="outline"
+                          className="border-primary/40 px-2 py-0 font-normal text-primary"
+                        >
+                          validator call
+                        </Badge>
+                      </div>
                     </div>
-                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
-                      <span className="tabular">{row.meta}</span>
-                      <Badge
-                        variant="outline"
-                        className="border-primary/40 px-2 py-0 font-normal text-primary"
-                      >
-                        validator call
-                      </Badge>
-                    </div>
-                  </div>
+                  </Link>
                 </li>
               ))}
             </ol>

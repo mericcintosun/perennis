@@ -8,6 +8,7 @@
 // nothing at all, not even viem, so no chain code enters this module graph and
 // this stays a plain server component.
 
+import { CopyChip } from "@/components/copy-chip";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -90,12 +91,17 @@ export function ProofPanel() {
               the fixture set, and which level of market discovery answered.
             </p>
           </div>
-          <a
-            className="inline-flex min-h-11 items-center font-mono text-xs underline underline-offset-4 hover:text-primary sm:min-h-0"
-            href="/api/health"
-          >
-            GET /api/health
-          </a>
+          {/* Open it, or copy the path and curl it. The chip says "Copied" in
+              words rather than swapping an icon nobody was looking at. */}
+          <div className="flex flex-wrap items-center gap-3">
+            <a
+              className="inline-flex min-h-11 items-center font-mono text-xs underline underline-offset-4 hover:text-primary sm:min-h-0"
+              href="/api/health"
+            >
+              GET /api/health
+            </a>
+            <CopyChip value="/api/health" label="Copy path" />
+          </div>
         </div>
 
         <Separator />
