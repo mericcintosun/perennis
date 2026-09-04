@@ -3068,3 +3068,117 @@ section 13 and `DELIVERY.md` "Before submitting". Fund the owner wallet first,
 because a faucet wait in the middle of the run is what turns a two hour evening
 into a missed deadline. After the redeploy the code is frozen and only the
 DoraHacks form remains.
+
+# 16. QA crawl record, the masthead asset pass
+
+Dated 4 September 2026. A second headless crawl of `https://perennis-app.vercel.app`
+came back with two findings, both of the `asset` kind and both the same asset:
+
+> `asset` on `/` — broken image (loaded but could not be drawn):
+> `https://perennis-app.vercel.app/brand/mark.svg`
+>
+> `asset` on `/console` — the same file, the same failure.
+
+The screenshots are `qa-1.png` and `qa-2.png` in the crawl export. Both show the
+broken image glyph in the masthead, immediately left of the word Perennis, on
+every page of the site. It is the first thing above the fold and the first thing
+a judge sees.
+
+Section 15 declared the code frozen with one sanctioned constant change. This
+pass is the exception the freeze did not anticipate: the masthead was serving a
+broken image on both routes.
+
+## The finding, and what actually caused it
+
+`public/brand/mark.svg` returns 200 with a well-formed-looking body. It previews
+correctly in any HTML context. It cannot be drawn by an `<img>`, which is what
+`next/image` renders, because an svg reached through an `<img>` is parsed as
+strict `image/svg+xml` rather than as HTML, and the file was not well-formed XML.
+
+The offending bytes were in its own documentation comment, which named the three
+CSS custom properties whose hexes the drawing writes out:
+
+```
+#16110D is --background, #D2622F is --primary, #F3EAE0 is
+--foreground.
+```
+
+A double hyphen may not appear inside an XML comment. Three of them appear here.
+The XML parser stops at the first, reports a fatal error, and the browser draws
+nothing — `naturalWidth` 0, the broken image glyph, no console message and no
+failed request, which is why nothing before a real crawl caught it. The drawing
+itself was never at fault and the network was never at fault.
+
+## What changed
+
+**The masthead renders the raster again** (`components/site-header.tsx:45`).
+Under the standing ONE MARK rule, when `public/brand/logo.png` exists it **is**
+the brand mark and the header renders that raster. Phase 9 had swapped in the
+hand-drawn `mark.svg` on palette grounds; that swap is reversed, and the reversal
+is recorded in `IDENTITY.md` Amendments and in `CLAUDE.md` under the Phase 9
+fence lift, both of which described the vector as the masthead mark and were
+wrong from the moment it stopped drawing. The header is still one `<Image` plus
+the word Perennis in the display face. `unoptimized` came off with the svg: a png
+has no reason to bypass the optimizer, and nothing else in the app passes an svg
+through `next/image`, so `dangerouslyAllowSVG` stays off.
+
+**Marka rerun needed: raster predates current identity.** `public/brand/logo.png`
+is a 1024 by 1024 render of a ring of four arrows on a pure black ground, in teal
+and amber. `IDENTITY.md` bans amber outright and allows exactly one accent, the
+clay `#D2622F`, so the raster genuinely clashes with the identity it now sits
+inside. It is wired anyway, because the ONE MARK rule is explicit that a clashing
+raster is still the mark and that the answer is a rerun of the Marka step, never
+a logo redrawn in code. At 28 px in the masthead the clash is small — the ring
+reads as a dark disc — but it is real, and the fix belongs upstream of this
+repository.
+
+**`public/brand/mark.svg` now parses.** The drawing is byte-identical: the same
+`viewBox`, the same four paths, the same three hexes, the same stroke widths and
+caps. Only the prose changed. The token names lost their leading hyphen pair, the
+comment says why in so many words so nobody restores them, and the file's opening
+line now states that it is not the masthead mark. It is on disk as a spare and is
+imported by nothing. Leaving a file that cannot be parsed sitting in `public/`
+was the trap that produced this finding once already.
+
+Checked while there: `public/logo.svg`, `app/icon.svg`,
+`public/illustrations/roll-loop.svg` and `public/illustrations/window-grid.svg`.
+None of them contains a double hyphen anywhere except as a comment delimiter, so
+`mark.svg` was the only file with this defect.
+
+## QA: external findings
+
+**None in this pass.** Both findings were the same file in this repository,
+served by this deployment, and broken by bytes this repository wrote. Nothing was
+an outage, a rate limit or a third-party block, and nothing here needed the
+Somnia RPC, a faucet or the explorer.
+
+## What this session could NOT verify
+
+**The re-crawl.** This session could read files but could not build, deploy or
+fetch the live URL, so the pass rests on reading rather than on a rendered page.
+Specifically unverified:
+
+1. **That the raster draws in the deployed masthead.** It did in every phase up
+   to 9, and `next/image` on a local png in `public/` is the ordinary path, so
+   the risk is low. The re-crawl is the test: if `/brand/logo.png` reports
+   `naturalWidth` 0 the file itself is damaged, which nothing in this pass would
+   explain.
+2. **That the rewritten `mark.svg` parses.** It was validated by reading, not by
+   a parser: the only `--` sequences left in the file are the four `<!--` and
+   four `-->` delimiters, which is the whole of the rule. Nothing renders it, so
+   a mistake here cannot reach a page.
+3. **How the raster's teal reads at 28 px against `#16110D`** on a real screen.
+   The judgement above comes from the source png at 1024 px, not from the
+   masthead.
+
+## Files changed
+
+Changed: `components/site-header.tsx`, `public/brand/mark.svg`, `IDENTITY.md`,
+`CLAUDE.md`, `HANDOFF.md`, `.farm-commits.json`.
+
+Not touched: `public/brand/logo.png` and `public/brand/og.png` (both binaries,
+both unchanged on disk), `public/__farm.txt`, `app/opengraph-image.png`,
+everything under `contracts/`, every palette token and every locked key in
+`IDENTITY.md`, and every Phase 5 security decision — this pass added no wallet
+prompt, loosened no approval, introduced no auto-connect and touched no code
+under `lib/wallet-state.ts` or `components/standing-plan-console.tsx`.
