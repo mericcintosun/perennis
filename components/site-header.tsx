@@ -2,17 +2,19 @@
 
 // The masthead.
 //
-// ONE MARK. public/brand/mark.svg is the mark: one vector at 28px and the word
-// Perennis as text in the display face. The wordmark SVG that used to sit beside
-// it was a second drawing of the same idea, which is why the header showed the
-// logo twice. The wordmark vector under public/ is still on disk for OG reuse
-// and is imported by nothing.
+// ONE MARK. public/brand/logo.png is the mark: the generated raster at 28px and
+// the word Perennis as text in the display face. The wordmark SVG that used to
+// sit beside it was a second drawing of the same idea, which is why the header
+// showed the logo twice. The wordmark vector under public/ is still on disk for
+// OG reuse and is imported by nothing.
 //
-// The mark is a vector drawn in the identity palette, not the pre-identity
-// raster at public/brand/logo.png, which stays on disk. `unoptimized` is what
-// lets an svg through next/image without turning on dangerouslyAllowSVG for the
-// whole app: this is our own file in our own public/ directory, and it does not
-// need the optimizer.
+// A previous phase swapped this raster for a hand drawn public/brand/mark.svg
+// on palette grounds. That vector never drew in a browser: its comment spelled
+// out the token names --background, --primary and --foreground, and a double
+// hyphen inside a comment is fatal to the strict XML parser an <img> uses for
+// image/svg+xml, so both pages showed the broken image glyph. The generated
+// raster is the mark either way, so it is back, and the palette mismatch is
+// written down in HANDOFF.md rather than redrawn here.
 //
 // Opaque, per IDENTITY.md. No translucency and nothing blurred behind it: a
 // broadsheet masthead sits on the paper, it does not float over it.
@@ -41,11 +43,10 @@ export function SiteHeader({ chainId }: { chainId: number }) {
       <div className="mx-auto flex min-h-16 max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-6 py-2 sm:py-0">
         <Link href="/" className="flex items-center gap-3">
           <Image
-            src="/brand/mark.svg"
+            src="/brand/logo.png"
             alt=""
             width={28}
             height={28}
-            unoptimized
             className="h-7 w-7"
             priority
           />

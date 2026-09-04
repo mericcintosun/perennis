@@ -96,6 +96,18 @@ beside it reads as an accident rather than a decision.
   `public/brand/og.png` stay on disk untouched, `app/opengraph-image.png` was not
   touched and no `app/opengraph-image.tsx` was added. The ONE MARK rule still
   holds: the header is one `<Image` plus the word Perennis.
+- **2026-09-04, QA round 1. The entry above is reversed.** A live crawl found the
+  masthead drawing a broken image glyph on both pages. The vector's comment wrote
+  the token names out with their leading hyphen pair, and a double hyphen inside
+  a comment is illegal XML; an `<img>` parses an svg as strict `image/svg+xml`,
+  so the file loaded with a 200 and refused to render. The ONE MARK rule settles
+  what replaces it: when `public/brand/logo.png` exists it **is** the brand mark,
+  so `components/site-header.tsx` renders that raster again. Its teal and amber
+  still read against the clay accent and this file still bans amber; the fix for
+  that is a Marka rerun on the raster, recorded in `HANDOFF.md`, never a logo
+  redrawn in code. No palette token, font, radius, layout or motion decision in
+  this file moved. `public/brand/mark.svg` keeps its drawing, gains a comment
+  that parses, and is imported by nothing.
 - **2026-08-30, Phase 9.** The motion system gains a third keyframe,
   `pns-draw-in`, which animates `stroke-dashoffset` on one decorative figure
   stroke (the balance sparkline) and nothing else. It is the same idea as

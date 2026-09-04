@@ -75,25 +75,28 @@ off limits, and anything new on the write path goes through `lib/tx.ts`.
 - `contracts/script/Deploy.s.sol`
 - the settlement logic inside `contracts/src/PerennisVault.sol`
 
-### Fence lift, Phase 9 only, now spent
+### Fence lift, Phase 9 only, spent and since reversed
 
 `public/` is on the never touch list above. Phase 9 was granted a named exception
-for exactly **one new file**, and it is already written:
+for exactly **one new file**, `public/brand/mark.svg`, a vector masthead mark
+drawn from the family rules in `components/brand/marks.tsx`, on the grounds that
+`public/brand/logo.png` was drawn against the pre-identity teal palette and no
+shell-less session can repaint a raster.
 
-1. `public/brand/mark.svg`, the masthead mark. Ground `#16110D`, strokes
-   `#D2622F` and `#F3EAE0`, `rx="1"`, 48 by 48 box, stroke width 2, round caps
-   and joins, drawn from the same family rules as `components/brand/marks.tsx`.
+**QA round 1 reversed the swap.** That vector never drew in any browser. Its
+comment spelled the token names out with their leading hyphen pair, and a double
+hyphen inside a comment is illegal XML; an `<img>` parses an svg as strict
+`image/svg+xml`, so both pages served a broken image glyph where the mark should
+be. Under the ONE MARK rule the generated raster is the mark regardless of its
+palette, so `components/site-header.tsx` points its one `<Image` back at
+`/brand/logo.png` and the palette mismatch is written down in `HANDOFF.md` as a
+Marka rerun, not redrawn in code. `public/brand/mark.svg` stays on disk with a
+comment that is valid XML, and is imported by nothing.
 
-Why: `public/brand/logo.png` was drawn against the pre-identity teal palette and
-its ring reads cool beside the clay accent. It is a binary, and no shell-less
-session can repaint a raster. `components/site-header.tsx` now points its one
-`<Image` at the vector, with `unoptimized` so an svg passes through next/image
-without turning on `dangerouslyAllowSVG` for the whole app.
-
-Untouched, and still fenced: `public/brand/logo.png` and `public/brand/og.png`
-stay on disk, `app/opengraph-image.png` was not touched, and no
-`app/opengraph-image.tsx` was added. Nothing else under `public/` was created,
-edited or deleted, `public/__farm.txt` included. The fence is closed again.
+Untouched, and still fenced: `public/brand/og.png` stays on disk,
+`app/opengraph-image.png` was not touched, and no `app/opengraph-image.tsx` was
+added. Nothing else under `public/` was created, edited or deleted,
+`public/__farm.txt` included. The fence is closed again.
 
 ### Fence lift, Phase 8 only, now spent
 
