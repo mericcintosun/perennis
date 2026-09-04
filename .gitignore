@@ -12,3 +12,9 @@ next-env.d.ts
 # addresses, calldata, nonces, and nothing else).
 contracts/cache/
 contracts/out/
+
+# farm: sır dosyaları (otomatik eklendi)
+*.pem
+*.key
+id_rsa
+!.env.example
