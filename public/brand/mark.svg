@@ -1,11 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" role="img" aria-label="Perennis">
   <title>Perennis</title>
-  <!-- The masthead mark. Same family rules as components/brand/marks.tsx: a 48
-       by 48 box, stroke width 2, round caps and joins, corner radius 1. The
-       colours are the IDENTITY.md tokens written out, because a file under
-       public/ is served as a static asset and cannot read a CSS variable from
-       the page: #16110D is --background, #D2622F is --primary, #F3EAE0 is
-       --foreground. There is no fourth colour and no gradient. -->
+  <!-- Not the masthead mark. public/brand/logo.png is the mark under the ONE
+       MARK rule and the header renders that raster; this file is on disk as a
+       spare and is imported by nothing.
+       Same family rules as components/brand/marks.tsx: a 48 by 48 box, stroke
+       width 2, round caps and joins, corner radius 1. The colours are the
+       IDENTITY.md tokens written out as hexes, because a file under public/ is
+       served as a static asset and cannot read a CSS variable from the page:
+       #16110D is the background token, #D2622F the primary, #F3EAE0 the
+       foreground. There is no fourth colour and no gradient.
+       Those token names are spelled here without their leading hyphen pair on
+       purpose. A double hyphen inside a comment is illegal XML, and an SVG
+       loaded through an img element is parsed as strict image/svg+xml, so the
+       earlier wording made the browser refuse to draw this file. -->
   <rect width="48" height="48" rx="1" fill="#16110D"/>
   <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <!-- The ring, with a break at the top right: one window closing. -->
