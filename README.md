@@ -13,7 +13,7 @@ column names only the artefact you open.
 | What | Status today | Where |
 | --- | --- | --- |
 | Live app | Deployed and answering. A probe on 30 August 2026 got 200 back in 298 ms. Whoever submits re-checks it in a cold private window, on the production deployment and not a preview URL, before pasting it on the form. | [perennis-app.vercel.app](https://perennis-app.vercel.app), and straight to the demo at [/console](https://perennis-app.vercel.app/console) |
-| Demo video | No take has been recorded. The form field still reads `PENDING, filled by a human before submitting`. | [VIDEO.md](VIDEO.md), the shot list a take follows. It is a script, not a recording: a 2:20 cut, second banded, with a screenshot fallback per band. |
+| Demo video | Recorded. 2:35, recorded narration, served from the site as a plain mp4. | [demo-video.mp4](https://perennis-app.vercel.app/demo-video.mp4) |
 | On chain proof | Not deployed. As of 30 August 2026 every artefact row that needs a chain reads `NOT YET FILLED`. Two scripts produce them: `contracts/script/Deploy.s.sol` for the vault address and the deploy hash, then `contracts/script/Smoke.s.sol` for the deposit hash in row 9. | [EVIDENCE.md](EVIDENCE.md), one row per artefact with its explorer link shape. The live app carries the same addresses in its proof panel at `/#proof`, and `GET /api/health` reports whether the deployment is reading the chain or the fixtures. An address that is not configured says so in words rather than showing a placeholder hash. |
 | Security | Contract addresses, every wallet permission this app requests, and the bounded approval amounts. It never asks for `eth_sign` or `personal_sign`, and no wallet dialog opens on page load. | [SECURITY.md](SECURITY.md) |
 

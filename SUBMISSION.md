@@ -75,7 +75,7 @@ judge will open it.
 ## Demo video link
 
 ```
-PENDING, filled by a human before submitting
+https://perennis-app.vercel.app/demo-video.mp4
 ```
 
 Mandatory field. Record `VIDEO.md`, which is banded to a 2:20 cut, confirm the
